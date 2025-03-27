@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parser menu z DOC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #convertedText {
+            display: none;
+        }
+
+        #convertBtn {
+            display: none;
+        }
+
+        #summaryBox {
+            display: none;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .summary-col {
+            flex-basis: calc(50% - 10px);
+            margin-bottom: 10px;
+        }
+
+        #totalCostAllMealsContainer {
+            display: none;
+            width: 100%;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .missing-date {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-4">
+        <h2 class="text-center">Wczytaj menu w formacie .doc</h2>
+
+        <div class="form-check form-switch my-3">
+            <input class="form-check-input" type="checkbox" id="toggleTextarea">
+            <label class="form-check-label" for="toggleTextarea">Pokaż pole tekstowe i przycisk Konwertuj</label>
+        </div>
+
+        <div class="form-check form-switch my-3">
+            <input class="form-check-input" type="checkbox" id="toggleDebug">
+            <label class="form-check-label" for="toggleDebug">Włącz debugowanie</label>
+        </div>
+
+        <div id="debugBox" class="alert alert-info d-none">Debugowanie aktywne</div>
+        <input type="file" id="fileInput" class="form-control my-3" accept=".doc">
+        <button id="convertBtn" class="btn btn-primary my-3">KONWERTUJ</button>
+        <div id="loadingSpinner" class="text-center my-3 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Przetwarzanie pliku, proszę czekać...</p>
+        </div>
+        <textarea id="convertedText" class="form-control my-3" rows="10"
+            placeholder="Tutaj pojawi się przekonwertowany tekst"></textarea>
+
+        <button id="generateMenuBtn" class="btn btn-success my-3">GENERUJ MENU</button>
+
+        <div id="warningBox" class="alert alert-warning d-none">Zawartość pliku nie jest zgodna z oczekiwaniami!</div>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Lp.</th>
+                    <th>Dzień miesiąca</th>
+                    <th>Dzień tygodnia</th>
+                    <th>Pierwsze danie</th>
+                    <th>Wybór</th>
+                    <th>Drugie danie</th>
+                    <th>Wybór</th>
+                </tr>
+            </thead>
+            <tbody id="menuTable"></tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="7" class="text-center">
+                        <div id="summaryBox">
+                            <div class="summary-col">
+                                <h5>Podsumowanie Pierwszych Dań</h5>
+                                <p>Ilość zaznaczonych pierwszych dań: <span id="selectedFirstCoursesCount">0</span></p>
+                                <p>Koszt pierwszego dania: <input type="number" id="firstCoursePrice" value="7.50"
+                                        min="0" step="0.01"> PLN</p>
+                                <p>Całkowity koszt pierwszych dań: <span id="totalFirstCoursesCost">0.00</span> PLN</p>
+                            </div>
+                            <div class="summary-col">
+                                <h5>Podsumowanie Drugich Dań</h5>
+                                <p>Ilość zaznaczonych drugich dań: <span id="selectedSecondCoursesCount">0</span></p>
+                                <p>Koszt drugiego dania: <input type="number" id="secondCoursePrice" value="15.50"
+                                        min="0" step="0.01"> PLN</p>
+                                <p>Całkowity koszt drugich dań: <span id="totalSecondCoursesCost">0.00</span> PLN</p>
+                            </div>
+                        </div>
+                        <div id="totalCostAllMealsContainer" class="alert alert-info mt-3">
+                            <h4>Całkowity koszt obiadów w miesiącu <span id="summaryMonth"></span>: <span
+                                    id="totalCostAllMeals">0.00</span> PLN</h4>
+                        </div>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <script>
+        const toggleTextareaCheckbox = document.getElementById('toggleTextarea');
+        const convertedTextarea = document.getElementById('convertedText');
+        const convertButton = document.getElementById('convertBtn');
+        const toggleDebugCheckbox = document.getElementById('toggleDebug');
+        const debugBox = document.getElementById('debugBox');
+        const summaryBox = document.getElementById('summaryBox');
+        const totalCostAllMealsContainer = document.getElementById('totalCostAllMealsContainer');
+        const generateMenuBtn = document.getElementById('generateMenuBtn');
+        const fileInput = document.getElementById('fileInput');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        toggleTextareaCheckbox.addEventListener('change', function () {
+            convertedTextarea.style.display = this.checked ? 'block' : 'none';
+            convertButton.style.display = this.checked ? 'inline-block' : 'none';
+        });
+
+        toggleDebugCheckbox.addEventListener('change', function () {
+            debugBox.classList.toggle('d-none', !this.checked);
+        });
+
+        document.getElementById('convertBtn').addEventListener('click', function () {
+            convertFileAndGenerateMenu();
+        });
+
+        document.getElementById('generateMenuBtn').addEventListener('click', function () {
+            if (!toggleTextareaCheckbox.checked) {
+                convertFileAndGenerateMenu();
+            } else {
+                const text = convertedTextarea.value;
+                if (!text) {
+                    if (toggleDebugCheckbox.checked) {
+                        debugBox.textContent = "Brak przekonwertowanego tekstu do przetworzenia.";
+                    }
+                    return;
+                }
+                loadingSpinner.classList.remove('d-none');
+                setTimeout(() => { // Dodaj opóźnienie, aby animacja była widoczna
+                    parseMenu(text);
+                    loadingSpinner.classList.add('d-none');
+                }, 100);
+            }
+        });
+
+        function convertFileAndGenerateMenu() {
+            const file = fileInput.files[0];
+
+            if (!file) {
+                if (toggleDebugCheckbox.checked) {
+                    debugBox.textContent = "Nie wybrano pliku do przesłania.";
+                }
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            loadingSpinner.classList.remove('d-none');
+
+            fetch('convert.php', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.Successful) {
+                        convertedTextarea.value = data.TextResult;
+                        if (toggleDebugCheckbox.checked) {
+                            debugBox.textContent = "Plik został pomyślnie przekonwertowany.";
+                        }
+                        parseMenu(data.TextResult);
+                    } else {
+                        if (toggleDebugCheckbox.checked) {
+                            debugBox.textContent = `Błąd konwersji: ${data.Error}`;
+                        }
+                        document.getElementById('warningBox').classList.remove('d-none');
+                    }
+                })
+                .catch(error => {
+                    if (toggleDebugCheckbox.checked) {
+                        debugBox.textContent = `Błąd podczas przesyłania pliku: ${error.message}`;
+                    }
+                    document.getElementById('warningBox').classList.remove('d-none');
+                })
+                .finally(() => {
+                    loadingSpinner.classList.add('d-none');
+                });
+        }
+
+        function parseMenu(jsonTekst) {
+            console.log("Początek parsowania menu.");
+            console.log("Otrzymany tekst JSON:", jsonTekst);
+
+            try {
+                const dane = JSON.parse(jsonTekst);
+                console.log("Dane JSON po parsowaniu:", dane);
+
+                if (!dane || !dane.Successful || !dane.TextResult) {
+                    console.error("Nieprawidłowy format danych JSON.");
+                    document.getElementById('warningBox').classList.remove('d-none');
+                    return;
+                }
+
+                const tekstMenu = dane.TextResult;
+                console.log("Tekst menu do przetworzenia:", tekstMenu);
+
+                const linie = tekstMenu.split('\n').filter(linia => linia.trim() !== '');
+                console.log("Linie tekstu menu po podziale i filtracji pustych:", linie);
+
+                const menuTableBody = document.getElementById('menuTable');
+                menuTableBody.innerHTML = ''; // Wyczyść poprzednią zawartość tabeli
+                let lp = 1;
+                const parsedDates = {};
+                let monthName = '';
+
+                for (let i = 0; i < linie.length; i++) {
+                    const linia = linie[i].trim();
+                    console.log(`Przetwarzanie linii ${i + 1}: "${linia}"`);
+
+                    const dopasowanieDnia = linia.match(/^(PONIEDZIAŁEK|WTOREK|ŚRODA|CZWARTEK|PIĄTEK)\s+(\d{2}\.(\d{2}))$/);
+                    if (dopasowanieDnia) {
+                        const dzienTygodnia = dopasowanieDnia[1];
+                        const dzienMiesiaca = dopasowanieDnia[2];
+                        const monthNumber = parseInt(dopasowanieDnia[3]);
+                        monthName = getMonthName(monthNumber);
+                        parsedDates[dzienMiesiaca] = { dzienTygodnia: dzienTygodnia, pierwszeDanie: null, drugieDanie: null };
+                        continue;
+                    }
+
+                    if (Object.keys(parsedDates).length > 0) {
+                        const ostatniDzien = Object.keys(parsedDates).pop();
+                        if (parsedDates[ostatniDzien].pierwszeDanie === null) {
+                            parsedDates[ostatniDzien].pierwszeDanie = linia;
+                            continue;
+                        }
+                        if (parsedDates[ostatniDzien].drugieDanie === null) {
+                            parsedDates[ostatniDzien].drugieDanie = linia;
+                            continue;
+                        }
+                    }
+                }
+
+                const firstDay = new Date(2025, 3, 1); // Kwiecień jest indeksem 3 (0-based)
+                const lastDay = new Date(2025, 3, 30);
+                let currentDate = firstDay;
+
+                while (currentDate <= lastDay) {
+                    const dayOfWeek = getDayOfWeekPL(currentDate.getDay());
+                    const dayOfMonth = (currentDate.getDate() < 10 ? '0' : '') + currentDate.getDate();
+                    const month = '04'; // Fixed for April
+
+                    const dateKey = `${dayOfMonth}.${month}`;
+                    const row = menuTableBody.insertRow();
+                    let cellLp = row.insertCell();
+                    let cellDzienMiesiaca = row.insertCell();
+                    let cellDzienTygodnia = row.insertCell();
+                    let cellPierwszeDanie = row.insertCell();
+                    let cellWyborPierwsze = row.insertCell();
+                    let cellDrugieDanie = row.insertCell();
+                    let cellWyborDrugie = row.insertCell();
+
+                    cellLp.textContent = lp++;
+                    cellDzienMiesiaca.textContent = dateKey;
+                    cellDzienTygodnia.textContent = dayOfWeek;
+
+                    if (parsedDates[dateKey]) {
+                        cellPierwszeDanie.textContent = parsedDates[dateKey].pierwszeDanie || '';
+                        const checkboxPierwsze = document.createElement('input');
+                        checkboxPierwsze.type = 'checkbox';
+                        checkboxPierwsze.classList.add('form-check-input');
+                        checkboxPierwsze.checked = true;
+                        cellWyborPierwsze.appendChild(checkboxPierwsze);
+
+                        cellDrugieDanie.textContent = parsedDates[dateKey].drugieDanie || '';
+                        const checkboxDrugie = document.createElement('input');
+                        checkboxDrugie.type = 'checkbox';
+                        checkboxDrugie.classList.add('form-check-input');
+                        checkboxDrugie.checked = true;
+                        cellWyborDrugie.appendChild(checkboxDrugie);
+                    } else {
+                        row.classList.add('missing-date');
+                        cellPierwszeDanie.textContent = '';
+                        cellWyborPierwsze.appendChild(document.createTextNode(''));
+                        cellDrugieDanie.textContent = '';
+                        cellWyborDrugie.appendChild(document.createTextNode(''));
+                    }
+
+                    const nextDay = new Date(currentDate);
+                    nextDay.setDate(currentDate.getDate() + 1);
+                    currentDate = nextDay;
+                }
+
+                document.getElementById('summaryMonth').textContent = monthName;
+                summaryBox.style.display = 'flex';
+                totalCostAllMealsContainer.style.display = 'block';
+                attachSummaryListeners();
+
+            } catch (error) {
+                console.error("Wystąpił błąd podczas parsowania JSON:", error);
+                document.getElementById('warningBox').classList.remove('d-none');
+            } finally {
+                console.log("Koniec parsowania menu.");
+            }
+        }
+
+        function getMonthName(monthNumber) {
+            const months = ["", "stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia", "września", "października", "listopada", "grudnia"];
+            return months[monthNumber] || "";
+        }
+
+        function getDayOfWeekPL(dayIndex) {
+            const days = ["Niedziela", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota"];
+            return days[dayIndex];
+        }
+
+        function attachSummaryListeners() {
+            const firstCoursePriceInput = document.getElementById('firstCoursePrice');
+            const secondCoursePriceInput = document.getElementById('secondCoursePrice');
+            const menuTableBody = document.getElementById('menuTable');
+            const rows = menuTableBody.querySelectorAll('tr');
+            const selectedFirstCoursesCountSpan = document.getElementById('selectedFirstCoursesCount');
+            const totalFirstCoursesCostSpan = document.getElementById('totalFirstCoursesCost');
+            const selectedSecondCoursesCountSpan = document.getElementById('selectedSecondCoursesCount');
+            const totalSecondCoursesCostSpan = document.getElementById('totalSecondCoursesCost');
+            const totalCostAllMealsSpan = document.getElementById('totalCostAllMeals');
+
+            const updateSummary = () => {
+                let countFirst = 0;
+                let countSecond = 0;
+                rows.forEach(row => {
+                    if (!row.classList.contains('missing-date')) {
+                        const checkboxes = row.querySelectorAll('input[type="checkbox"]');
+                        if (checkboxes.length === 2) {
+                            const checkboxPierwsze = checkboxes[0];
+                            const checkboxDrugie = checkboxes[1];
+                            if (checkboxPierwsze.checked) {
+                                countFirst++;
+                            }
+                            if (checkboxDrugie.checked) {
+                                countSecond++;
+                            }
+                        }
+                    }
+                });
+
+                const priceFirst = parseFloat(firstCoursePriceInput.value) || 0;
+                const priceSecond = parseFloat(secondCoursePriceInput.value) || 0;
+                const totalFirstCost = countFirst * priceFirst;
+                const totalSecondCost = countSecond * priceSecond;
+                const totalAllMealsCost = totalFirstCost + totalSecondCost;
+
+                selectedFirstCoursesCountSpan.textContent = countFirst;
+                totalFirstCoursesCostSpan.textContent = totalFirstCost.toFixed(2);
+                selectedSecondCoursesCountSpan.textContent = countSecond;
+                totalSecondCoursesCostSpan.textContent = totalSecondCost.toFixed(2);
+                totalCostAllMealsSpan.textContent = totalAllMealsCost.toFixed(2);
+            };
+
+            firstCoursePriceInput.addEventListener('input', updateSummary);
+            secondCoursePriceInput.addEventListener('input', updateSummary);
+            rows.forEach(row => {
+                const checkboxes = row.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', updateSummary);
+                });
+            });
+
+            // Wywołaj updateSummary na początku, aby uwzględnić domyślnie zaznaczone checkboxy i ceny
+            updateSummary();
+        }
+    </script>
+</body>
+
+</html>
