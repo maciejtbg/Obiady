@@ -10,115 +10,7 @@
   <!-- Tippy.js CSS -->
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
   <style>
-    /* Zmienne dla light mode */
-    :root {
-      --bg-light: #ffffff;
-      --text-light: #333333;
-      --table-bg: #ffffff;
-      --table-header-bg: #f0f0f0;
-      --table-header-text: #333333;
-      --table-row-bg: #ffffff;
-      --table-row-even-bg: #f9f9f9;
-      --table-row-text: #333333;
-      --table-border: #cccccc;
-    }
-
-    /* Light mode – domyślne style */
-    body {
-      transition: background-color 0.3s, color 0.3s;
-      background-color: var(--bg-light);
-      color: var(--text-light);
-    }
-
-    .table {
-      background-color: var(--table-bg);
-      color: var(--table-row-text);
-      border-color: var(--table-border);
-    }
-
-    .table th {
-      background-color: var(--table-header-bg);
-      color: var(--table-header-text);
-    }
-
-    .table td,
-    .table th {
-      border-color: var(--table-border);
-    }
-
-    .table tr:nth-child(even) {
-      background-color: var(--table-row-even-bg);
-    }
-
-    /* Dark mode – nowoczesne odcienie szarości */
-    .dark-theme {
-      background-color: #1f1f1f;
-      color: #e0e0e0;
-    }
-
-    .dark-theme .table {
-      background-color: #2c2c2c !important;
-      color: #e0e0e0;
-      border-color: #444444;
-    }
-
-    .dark-theme .table th {
-      background-color: #3a3a3a !important;
-      color: #e0e0e0;
-    }
-
-    .dark-theme .table td,
-    .dark-theme .table th {
-      border-color: #444444 !important;
-    }
-
-    .dark-theme .table tr:nth-child(even) {
-      background-color: #343434 !important;
-    }
-
-    /* Dla wierszy bez danych – używamy stylu Bootstrap "table-secondary" */
-    /* Nie potrzebujemy dodatkowych reguł – bootstrap je zapewnia */
-
-    .dark-theme .form-control {
-      background-color: #2c2c2c;
-      color: #e0e0e0;
-      border-color: #444444;
-    }
-
-    .dark-theme .btn {
-      background-color: #3a3a3a;
-      border-color: #555555;
-      color: #e0e0e0;
-    }
-
-    .dark-theme #summaryBox,
-    .dark-theme #totalCostAllMealsContainer {
-      background-color: #2c2c2c;
-      color: #e0e0e0;
-      border: 1px solid #444444;
-    }
-
-    /* Inne elementy */
-    #convertedText,
-    #convertBtn,
-    #summaryBox,
-    #totalCostAllMealsContainer {
-      display: none;
-    }
-
-    #summaryBox {
-      flex-wrap: wrap;
-      justify-content: space-between;
-      padding: 10px;
-      border: 1px solid var(--table-border);
-      margin-top: 10px;
-    }
-
-    .summary-col {
-      flex-basis: calc(50% - 10px);
-      margin-bottom: 10px;
-    }
-
+    /* Zachowujemy tylko niezbędne niestandardowe style */
     .dish-name {
       cursor: help;
       position: relative;
@@ -126,43 +18,41 @@
   </style>
 </head>
 
-<body>
+<body class="bg-light text-dark">
   <div class="container mt-4">
     <h2 class="text-center">Wczytaj menu z DOC</h2>
 
-    <!-- Przełącznik pola tekstowego -->
+    <!-- Przełączniki -->
     <div class="form-check form-switch my-3">
       <input class="form-check-input" type="checkbox" id="toggleTextarea">
       <label class="form-check-label" for="toggleTextarea">Pokaż pole tekstowe i przycisk Konwertuj</label>
     </div>
-
-    <!-- Przełącznik debugowania -->
     <div class="form-check form-switch my-3">
       <input class="form-check-input" type="checkbox" id="toggleDebug">
       <label class="form-check-label" for="toggleDebug">Włącz debugowanie</label>
     </div>
-
-    <!-- Przełącznik ciemnego/jasnego motywu -->
     <div class="form-check form-switch my-3">
       <input class="form-check-input" type="checkbox" id="themeToggle">
       <label class="form-check-label" for="themeToggle">Ciemny motyw</label>
     </div>
 
+    <!-- Powiadomienia i formularze -->
     <div id="debugBox" class="alert alert-info d-none">Debugowanie aktywne</div>
     <input type="file" id="fileInput" class="form-control my-3" accept=".doc">
-    <button id="convertBtn" class="btn btn-primary my-3">KONWERTUJ</button>
+    <button id="convertBtn" class="btn btn-primary my-3 d-none">KONWERTUJ</button>
     <div id="loadingSpinner" class="text-center my-3 d-none">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
       <p>Przetwarzanie pliku, proszę czekać...</p>
     </div>
-    <textarea id="convertedText" class="form-control my-3" rows="10"
+    <textarea id="convertedText" class="form-control my-3 d-none" rows="10"
       placeholder="Tutaj pojawi się przekonwertowany tekst"></textarea>
     <button id="generateMenuBtn" class="btn btn-success my-3">GENERUJ MENU</button>
     <div id="warningBox" class="alert alert-warning d-none">Zawartość pliku nie jest zgodna z oczekiwaniami!</div>
 
-    <table class="table table-bordered">
+    <!-- Tabela menu -->
+    <table id="menuTable" class="table table-hover">
       <thead>
         <tr>
           <th>Lp.</th>
@@ -174,12 +64,12 @@
           <th>Wybór</th>
         </tr>
       </thead>
-      <tbody id="menuTable"></tbody>
+      <tbody></tbody>
       <tfoot>
         <tr>
           <td colspan="7" class="text-center">
-            <div id="summaryBox">
-              <div class="summary-col">
+            <div id="summaryBox" class="d-flex flex-wrap justify-content-between p-2 border mt-2">
+              <div class="col-6 mb-2">
                 <h5>Podsumowanie Pierwszych Dań</h5>
                 <p>Ilość zaznaczonych pierwszych dań: <span id="selectedFirstCoursesCount">0</span></p>
                 <p>Koszt pierwszego dania:
@@ -187,7 +77,7 @@
                 </p>
                 <p>Całkowity koszt pierwszych dań: <span id="totalFirstCoursesCost">0.00</span> PLN</p>
               </div>
-              <div class="summary-col">
+              <div class="col-6 mb-2">
                 <h5>Podsumowanie Drugich Dań</h5>
                 <p>Ilość zaznaczonych drugich dań: <span id="selectedSecondCoursesCount">0</span></p>
                 <p>Koszt drugiego dania:
@@ -196,7 +86,7 @@
                 <p>Całkowity koszt drugich dań: <span id="totalSecondCoursesCost">0.00</span> PLN</p>
               </div>
             </div>
-            <div id="totalCostAllMealsContainer" class="alert alert-info mt-3">
+            <div id="totalCostAllMealsContainer" class="alert alert-info mt-3 d-none">
               <h4>Całkowity koszt obiadów w miesiącu <span id="summaryMonth"></span>:
                 <span id="totalCostAllMeals">0.00</span> PLN
               </h4>
@@ -207,7 +97,10 @@
     </table>
   </div>
 
-  <!-- Popper.js and Tippy.js -->
+  <!-- Skrypty -->
+  <!-- Bootstrap JS (zawiera Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Popper.js i Tippy.js -->
   <script src="https://unpkg.com/@popperjs/core@2"></script>
   <script src="https://unpkg.com/tippy.js@6"></script>
   <script>
@@ -224,52 +117,52 @@
     const loadingSpinner = document.getElementById('loadingSpinner');
     const themeToggle = document.getElementById('themeToggle');
 
-    // Lokalny słownik definicji – klucze zapisujemy w lowercase
-    const polishDefinitions = {
-      // Pierwsze dania
-      "zupa kalafiorowa zabielana": "Delikatna zupa na bazie kalafiora, zabielana śmietaną, o łagodnym smaku.",
-      "krupnik z kaszy wiejskiej jęczmiennej z ziemniakami": "Sycący krupnik na bazie kaszy wiejskiej jęczmiennej, z dodatkiem ziemniaków, aromatycznie przyprawiony.",
-      "zupa pomidorowa z makaronem": "Klasyczna zupa pomidorowa z dodatkiem makaronu, lekko przyprawiona bazylią i oregano.",
-      "zupa szczawiowa z jajkiem": "Orzeźwiająca zupa szczawiowa, podawana z ugotowanym jajkiem, idealna na wiosnę.",
-      "zupa z zielonej fasolki szparagowej": "Lekka i kremowa zupa z młodej zielonej fasolki szparagowej, o subtelnym smaku.",
-      "rosół z makaronem": "Tradycyjny, klarowny rosół drobiowy podawany z makaronem, z nutą przypraw.",
-      "zupa buraczkowa zabielana": "Buraczkowa zupa o słodko-kwaskowatym smaku, zabielana śmietaną.",
-      "zupa tajska z kurczakiem": "Egzotyczna zupa tajska z dodatkiem kurczaka, aromatyzowana mlekiem kokosowym i przyprawami curry.",
-      "zupa owocowa z zacierką": "Lekka, owocowa zupa z dodatkiem zacierki, idealna na letnie dni.",
-      "zupa kapuśniak z młodej kapusty": "Tradycyjny kapuśniak przygotowany z młodej kapusty, o wyrazistym, kwaskowatym smaku.",
-      "zupa jarzynowa zabielana": "Zdrowa i sycąca zupa jarzynowa, zabielana śmietaną, pełna sezonowych warzyw.",
-      "zupa neapolitańska z makaronem": "Zupa inspirowana kuchnią włoską, z dodatkiem makaronu i pomidorów, o intensywnym smaku.",
-      "zupa minestrone": "Gęsta włoska zupa warzywna z dodatkiem fasoli i makaronu, bogata w składniki odżywcze.",
-      "zupa krem warzywny": "Kremowa zupa z mieszanki sezonowych warzyw, idealna dla miłośników delikatnych smaków.",
-      "zupa brokułowa zabielana": "Zupa z brokułów, delikatnie zabielana, z nutą czosnku i parmezanu.",
-      "zupa rosół z zacierką": "Alternatywna wersja tradycyjnego rosołu, podawana z domową zacierką.",
-      "zupa krupnik z ziemniakami": "Krupnik przygotowany z kaszy, z dodatkiem ziemniaków, lekko przyprawiony i sycący.",
+      // Lokalny słownik definicji – klucze zapisujemy w lowercase
+      const polishDefinitions = {
+        // Pierwsze dania
+        "zupa kalafiorowa zabielana": "Delikatna zupa na bazie kalafiora, zabielana śmietaną, o łagodnym smaku.",
+        "krupnik z kaszy wiejskiej jęczmiennej z ziemniakami": "Sycący krupnik na bazie kaszy wiejskiej jęczmiennej, z dodatkiem ziemniaków, aromatycznie przyprawiony.",
+        "zupa pomidorowa z makaronem": "Klasyczna zupa pomidorowa z dodatkiem makaronu, lekko przyprawiona bazylią i oregano.",
+        "zupa szczawiowa z jajkiem": "Orzeźwiająca zupa szczawiowa, podawana z ugotowanym jajkiem, idealna na wiosnę.",
+        "zupa z zielonej fasolki szparagowej": "Lekka i kremowa zupa z młodej zielonej fasolki szparagowej, o subtelnym smaku.",
+        "rosół z makaronem": "Tradycyjny, klarowny rosół drobiowy podawany z makaronem, z nutą przypraw.",
+        "zupa buraczkowa zabielana": "Buraczkowa zupa o słodko-kwaskowatym smaku, zabielana śmietaną.",
+        "zupa tajska z kurczakiem": "Egzotyczna zupa tajska z dodatkiem kurczaka, aromatyzowana mlekiem kokosowym i przyprawami curry.",
+        "zupa owocowa z zacierką": "Lekka, owocowa zupa z dodatkiem zacierki, idealna na letnie dni.",
+        "zupa kapuśniak z młodej kapusty": "Tradycyjny kapuśniak przygotowany z młodej kapusty, o wyrazistym, kwaskowatym smaku.",
+        "zupa jarzynowa zabielana": "Zdrowa i sycąca zupa jarzynowa, zabielana śmietaną, pełna sezonowych warzyw.",
+        "zupa neapolitańska z makaronem": "Zupa inspirowana kuchnią włoską, z dodatkiem makaronu i pomidorów, o intensywnym smaku.",
+        "zupa minestrone": "Gęsta włoska zupa warzywna z dodatkiem fasoli i makaronu, bogata w składniki odżywcze.",
+        "zupa krem warzywny": "Kremowa zupa z mieszanki sezonowych warzyw, idealna dla miłośników delikatnych smaków.",
+        "zupa brokułowa zabielana": "Zupa z brokułów, delikatnie zabielana, z nutą czosnku i parmezanu.",
+        "zupa rosół z zacierką": "Alternatywna wersja tradycyjnego rosołu, podawana z domową zacierką.",
+        "zupa krupnik z ziemniakami": "Krupnik przygotowany z kaszy, z dodatkiem ziemniaków, lekko przyprawiony i sycący.",
 
-      // Drugie dania
-      "kotlet pożarski, ziemniaki puree, surówka": "Soczysty kotlet pożarski podawany z kremowym puree ziemniaczanym i świeżą surówką.",
-      "racuchy drożdżowe z jabłkami i cukrem pudrem": "Puszyste racuchy drożdżowe z dodatkiem słodkich jabłek, posypane cukrem pudrem.",
-      "gulasz wieprzowy z szynki, kasza, surówka": "Aromatyczny gulasz wieprzowy z szynki, serwowany z kaszą i surówką.",
-      "kotlet z kalafiora z ziemniakami, surówka": "Zdrowa alternatywa – kotlet z kalafiora, podawany z ziemniakami i surówką.",
-      "kurczak w sosie potrawkowym z warzywami, kasza bulgur, surówka": "Delikatny kurczak duszony w aromatycznym sosie z warzywami, serwowany z kaszą bulgur i surówką.",
-      "schab po parysku, ziemniaki, surówka": "Schab przygotowany według paryskiej receptury, podawany z ziemniakami i świeżą surówką.",
-      "kotlet mielony, ziemniaki, surówka": "Tradycyjny kotlet mielony, podawany z ziemniakami oraz surówką.",
-      "pierogi z owocami i twarogiem": "Słodkie pierogi nadziewane mieszanką owoców i delikatnego twarogu, idealne na deser.",
-      "kotlet ziemniaczany z sosem pieczarkowym, surówka": "Kotlet ziemniaczany serwowany z aromatycznym sosem pieczarkowym oraz surówką.",
-      "makaron z sosem bolognese": "Klasyczny makaron z gęstym sosem bolognese, przygotowanym na bazie mięsa i pomidorów.",
-      "pieczeń z szynki , ziemniaki, surówka": "Soczysta pieczeń z szynki, podawana z ziemniakami i surówką.",
-      "gulasz drobiowy z pomidorami, kasza bulgur, surówka": "Lekkie danie z drobiu duszonego z pomidorami, podawane z kaszą bulgur i surówką.",
-      "placki z jabłkiem i marchewką z cukrem pudrem": "Chrupiące placki z dodatkiem jabłek i marchewki, posypane cukrem pudrem.",
-      "pulpety w sosie koperkowym, ziemniaki, surówka": "Małe pulpety mięsne w delikatnym sosie koperkowym, serwowane z ziemniakami i surówką.",
-      "paluszki rybne, ziemniak puree, surówka": "Chrupiące paluszki rybne, podawane z ziemniakowym puree i świeżą surówką.",
-      "pierogi ruskie": "Tradycyjne pierogi z farszem z ziemniaków i twarogu, lekko podsmażane na złoty kolor.",
-      "tortilla z kurczakiem": "Meksykańska tortilla wypełniona soczystym kurczakiem, warzywami i aromatycznymi przyprawami.",
-      "gołąbki odwrotnie w sosie pomidorowym, ziemniaki, surówka z buraczków": "Innowacyjna wersja gołąbków, podawana w sosie pomidorowym z ziemniakami i surówką z buraczków."
-    };
+        // Drugie dania
+        "kotlet pożarski, ziemniaki puree, surówka": "Soczysty kotlet pożarski podawany z kremowym puree ziemniaczanym i świeżą surówką.",
+        "racuchy drożdżowe z jabłkami i cukrem pudrem": "Puszyste racuchy drożdżowe z dodatkiem słodkich jabłek, posypane cukrem pudrem.",
+        "gulasz wieprzowy z szynki, kasza, surówka": "Aromatyczny gulasz wieprzowy z szynki, serwowany z kaszą i surówką.",
+        "kotlet z kalafiora z ziemniakami, surówka": "Zdrowa alternatywa kotlet z kalafiora, podawany z ziemniakami i surówką.",
+        "kurczak w sosie potrawkowym z warzywami, kasza bulgur, surówka": "Delikatny kurczak duszony w aromatycznym sosie z warzywami, serwowany z kaszą bulgur i surówką.",
+        "schab po parysku, ziemniaki, surówka": "Schab przygotowany według paryskiej receptury, podawany z ziemniakami i świeżą surówką.",
+        "kotlet mielony, ziemniaki, surówka": "Tradycyjny kotlet mielony, podawany z ziemniakami oraz surówką.",
+        "pierogi z owocami i twarogiem": "Słodkie pierogi nadziewane mieszanką owoców i delikatnego twarogu, idealne na deser.",
+        "kotlet ziemniaczany z sosem pieczarkowym, surówka": "Kotlet ziemniaczany serwowany z aromatycznym sosem pieczarkowym oraz surówką.",
+        "makaron z sosem bolognese": "Klasyczny makaron z gęstym sosem bolognese, przygotowanym na bazie mięsa i pomidorów.",
+        "pieczeń z szynki , ziemniaki, surówka": "Soczysta pieczeń z szynki, podawana z ziemniakami i surówką.",
+        "gulasz drobiowy z pomidorami, kasza bulgur, surówka": "Lekkie danie z drobiu duszonego z pomidorami, podawane z kaszą bulgur i surówką.",
+        "placki z jabłkiem i marchewką z cukrem pudrem": "Chrupiące placki z dodatkiem jabłek i marchewki, posypane cukrem pudrem.",
+        "pulpety w sosie koperkowym, ziemniaki, surówka": "Małe pulpety mięsne w delikatnym sosie koperkowym, serwowane z ziemniakami i surówką.",
+        "paluszki rybne, ziemniak puree, surówka": "Chrupiące paluszki rybne, podawane z ziemniakowym puree i świeżą surówką.",
+        "pierogi ruskie": "Tradycyjne pierogi z farszem z ziemniaków i twarogu, lekko podsmażane na złoty kolor.",
+        "tortilla z kurczakiem": "Meksykańska tortilla wypełniona soczystym kurczakiem, warzywami i aromatycznymi przyprawami.",
+        "gołąbki odwrotnie w sosie pomidorowym, ziemniaki, surówka z buraczków": "Innowacyjna wersja gołąbków, podawana w sosie pomidorowym z ziemniakami i surówką z buraczków."
+      };
 
-    // Obsługa przełącznika pola tekstowego
+    // Obsługa widoczności pola tekstowego i przycisku
     toggleTextareaCheckbox.addEventListener('change', function () {
-      convertedTextarea.style.display = this.checked ? 'block' : 'none';
-      convertButton.style.display = this.checked ? 'inline-block' : 'none';
+      convertedTextarea.classList.toggle('d-none', !this.checked);
+      convertButton.classList.toggle('d-none', !this.checked);
     });
 
     // Obsługa debugowania
@@ -277,16 +170,46 @@
       debugBox.classList.toggle('d-none', !this.checked);
     });
 
-    // Obsługa przełącznika motywu (ciemny/jasny)
-    function applyTheme(theme) {
-      if (theme === 'dark') {
-        document.body.classList.add('dark-theme');
-        themeToggle.checked = true;
-      } else {
-        document.body.classList.remove('dark-theme');
-        themeToggle.checked = false;
-      }
+  // Obsługa motywu z wykorzystaniem Bootstrap
+  function applyTheme(theme) {
+    const body = document.body;
+    const menuTable = document.getElementById('menuTable');
+    const summaryBox = document.getElementById('summaryBox');
+    const totalCostContainer = document.getElementById('totalCostAllMealsContainer');
+
+    if (theme === 'dark') {
+      // Dla body
+      body.classList.replace('bg-light', 'bg-dark');
+      body.classList.replace('text-dark', 'text-light');
+
+      // Dla tabeli – dodajemy klasę table-dark (domyślny wygląd to brak tej klasy)
+      menuTable.classList.add('table-dark');
+
+      // Dla sekcji podsumowania
+      summaryBox.classList.replace('bg-light', 'bg-dark');
+      summaryBox.classList.replace('text-dark', 'text-light');
+      totalCostContainer.classList.replace('bg-light', 'bg-dark');
+      totalCostContainer.classList.replace('text-dark', 'text-light');
+
+      themeToggle.checked = true;
+    } else {
+      // Przywracamy styl jasny dla body
+      body.classList.replace('bg-dark', 'bg-light');
+      body.classList.replace('text-light', 'text-dark');
+
+      // Usuwamy klasę table-dark – tabela przyjmuje domyślny jasny styl
+      menuTable.classList.remove('table-dark');
+
+      // Przywracamy jasny styl dla sekcji podsumowania
+      summaryBox.classList.replace('bg-dark', 'bg-light');
+      summaryBox.classList.replace('text-light', 'text-dark');
+      totalCostContainer.classList.replace('bg-dark', 'bg-light');
+      totalCostContainer.classList.replace('text-light', 'text-dark');
+
+      themeToggle.checked = false;
     }
+  }
+
     themeToggle.addEventListener('change', () => {
       const theme = themeToggle.checked ? 'dark' : 'light';
       applyTheme(theme);
@@ -295,7 +218,7 @@
     const savedTheme = localStorage.getItem('theme') || 'light';
     applyTheme(savedTheme);
 
-    // Obsługa przycisków konwersji i generowania menu
+    // Konwersja i generowanie menu
     convertButton.addEventListener('click', convertFileAndGenerateMenu);
     generateMenuBtn.addEventListener('click', () => {
       if (!toggleTextareaCheckbox.checked) {
@@ -358,33 +281,26 @@
     }
 
     function parseMenu(jsonTekst) {
-      console.log("Początek parsowania menu.");
-      console.log("Otrzymany tekst JSON:", jsonTekst);
       try {
         const dane = JSON.parse(jsonTekst);
-        console.log("Dane JSON po parsowaniu:", dane);
         if (!dane || !dane.Successful || !dane.TextResult) {
-          console.error("Nieprawidłowy format danych JSON.");
           document.getElementById('warningBox').classList.remove('d-none');
           return;
         }
         const tekstMenu = dane.TextResult;
-        console.log("Tekst menu do przetworzenia:", tekstMenu);
         const linie = tekstMenu.split('\n').filter(linia => linia.trim() !== '');
-        console.log("Linie tekstu menu po podziale i filtracji pustych:", linie);
-        const menuTableBody = document.getElementById('menuTable');
+        const menuTableBody = document.querySelector('#menuTable tbody');
         menuTableBody.innerHTML = '';
         let lp = 1;
         const parsedDates = {};
         let monthName = '';
-        for (let i = 0; i < linie.length; i++) {
-          const linia = linie[i].trim();
-          console.log(`Przetwarzanie linii ${i + 1}: "${linia}"`);
-          const dopasowanieDnia = linia.match(/^(PONIEDZIAŁEK|WTOREK|ŚRODA|CZWARTEK|PIĄTEK)\s+(\d{2}\.(\d{2}))$/);
-          if (dopasowanieDnia) {
-            const dzienTygodnia = dopasowanieDnia[1];
-            const dzienMiesiaca = dopasowanieDnia[2];
-            const monthNumber = parseInt(dopasowanieDnia[3]);
+        for (let linia of linie) {
+          linia = linia.trim();
+          const matchDay = linia.match(/^(PONIEDZIAŁEK|WTOREK|ŚRODA|CZWARTEK|PIĄTEK)\s+(\d{2}\.(\d{2}))$/);
+          if (matchDay) {
+            const dzienTygodnia = matchDay[1];
+            const dzienMiesiaca = matchDay[2];
+            const monthNumber = parseInt(matchDay[3]);
             monthName = getMonthName(monthNumber);
             parsedDates[dzienMiesiaca] = { dzienTygodnia, pierwszeDanie: null, drugieDanie: null };
             continue;
@@ -401,62 +317,49 @@
             }
           }
         }
-        const firstDay = new Date(2025, 3, 1); // Kwiecień (indeks 3, 0-based)
+        // Załóżmy, że analizujemy menu dla kwietnia 2025
+        const firstDay = new Date(2025, 3, 1);
         const lastDay = new Date(2025, 3, 30);
         let currentDate = firstDay;
         while (currentDate <= lastDay) {
           const dayOfWeek = getDayOfWeekPL(currentDate.getDay());
-          const dayOfMonth = (currentDate.getDate() < 10 ? '0' : '') + currentDate.getDate();
-          const month = '04'; // Kwiecień
-          const dateKey = `${dayOfMonth}.${month}`;
+          const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
+          const dateKey = `${dayOfMonth}.04`;
           const row = menuTableBody.insertRow();
-          let cellLp = row.insertCell();
-          let cellDzienMiesiaca = row.insertCell();
-          let cellDzienTygodnia = row.insertCell();
-          let cellPierwszeDanie = row.insertCell();
-          let cellWyborPierwsze = row.insertCell();
-          let cellDrugieDanie = row.insertCell();
-          let cellWyborDrugie = row.insertCell();
-          cellLp.textContent = lp++;
-          cellDzienMiesiaca.textContent = dateKey;
-          cellDzienTygodnia.textContent = dayOfWeek;
+          row.insertCell().textContent = lp++;
+          row.insertCell().textContent = dateKey;
+          row.insertCell().textContent = dayOfWeek;
+          const cellPierwsze = row.insertCell();
+          const cellWyborPierwsze = row.insertCell();
+          const cellDrugie = row.insertCell();
+          const cellWyborDrugie = row.insertCell();
           if (parsedDates[dateKey]) {
-            cellPierwszeDanie.textContent = parsedDates[dateKey].pierwszeDanie || '';
-            cellPierwszeDanie.classList.add('dish-name');
+            cellPierwsze.textContent = parsedDates[dateKey].pierwszeDanie || '';
+            cellPierwsze.classList.add('dish-name');
             const checkboxPierwsze = document.createElement('input');
             checkboxPierwsze.type = 'checkbox';
             checkboxPierwsze.classList.add('form-check-input');
             checkboxPierwsze.checked = true;
             cellWyborPierwsze.appendChild(checkboxPierwsze);
-            cellDrugieDanie.textContent = parsedDates[dateKey].drugieDanie || '';
-            cellDrugieDanie.classList.add('dish-name');
+            cellDrugie.textContent = parsedDates[dateKey].drugieDanie || '';
+            cellDrugie.classList.add('dish-name');
             const checkboxDrugie = document.createElement('input');
             checkboxDrugie.type = 'checkbox';
             checkboxDrugie.classList.add('form-check-input');
             checkboxDrugie.checked = true;
             cellWyborDrugie.appendChild(checkboxDrugie);
           } else {
-            // Zamiast klasy missing-date, używamy klasy Bootstrap "table-secondary"
             row.classList.add('table-secondary');
-            cellPierwszeDanie.textContent = '';
-            cellWyborPierwsze.appendChild(document.createTextNode(''));
-            cellDrugieDanie.textContent = '';
-            cellWyborDrugie.appendChild(document.createTextNode(''));
           }
-          const nextDay = new Date(currentDate);
-          nextDay.setDate(currentDate.getDate() + 1);
-          currentDate = nextDay;
+          currentDate.setDate(currentDate.getDate() + 1);
         }
         document.getElementById('summaryMonth').textContent = monthName;
         summaryBox.style.display = 'flex';
-        totalCostAllMealsContainer.style.display = 'block';
+        totalCostAllMealsContainer.classList.remove('d-none');
         attachSummaryListeners();
         attachTooltipListeners();
       } catch (error) {
-        console.error("Wystąpił błąd podczas parsowania JSON:", error);
         document.getElementById('warningBox').classList.remove('d-none');
-      } finally {
-        console.log("Koniec parsowania menu.");
       }
     }
 
@@ -473,8 +376,7 @@
     function attachSummaryListeners() {
       const firstCoursePriceInput = document.getElementById('firstCoursePrice');
       const secondCoursePriceInput = document.getElementById('secondCoursePrice');
-      const menuTableBody = document.getElementById('menuTable');
-      const rows = menuTableBody.querySelectorAll('tr');
+      const rows = document.querySelectorAll('#menuTable tbody tr');
       const selectedFirstCoursesCountSpan = document.getElementById('selectedFirstCoursesCount');
       const totalFirstCoursesCostSpan = document.getElementById('totalFirstCoursesCost');
       const selectedSecondCoursesCountSpan = document.getElementById('selectedSecondCoursesCount');
@@ -488,14 +390,8 @@
           if (!row.classList.contains('table-secondary')) {
             const checkboxes = row.querySelectorAll('input[type="checkbox"]');
             if (checkboxes.length === 2) {
-              const checkboxPierwsze = checkboxes[0];
-              const checkboxDrugie = checkboxes[1];
-              if (checkboxPierwsze.checked) {
-                countFirst++;
-              }
-              if (checkboxDrugie.checked) {
-                countSecond++;
-              }
+              if (checkboxes[0].checked) countFirst++;
+              if (checkboxes[1].checked) countSecond++;
             }
           }
         });
@@ -514,15 +410,13 @@
       firstCoursePriceInput.addEventListener('input', updateSummary);
       secondCoursePriceInput.addEventListener('input', updateSummary);
       rows.forEach(row => {
-        const checkboxes = row.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(checkbox => {
+        row.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
           checkbox.addEventListener('change', updateSummary);
         });
       });
       updateSummary();
     }
 
-    // Inicjalizacja tooltipów wykorzystujących lokalny słownik definicji – porównujemy lowercase
     function attachTooltipListeners() {
       tippy('.dish-name', {
         content(reference) {
