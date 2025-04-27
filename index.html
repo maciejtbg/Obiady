@@ -117,47 +117,47 @@
     const loadingSpinner = document.getElementById('loadingSpinner');
     const themeToggle = document.getElementById('themeToggle');
 
-      // Lokalny słownik definicji – klucze zapisujemy w lowercase
-      const polishDefinitions = {
-        // Pierwsze dania
-        "zupa kalafiorowa zabielana": "Delikatna zupa na bazie kalafiora, zabielana śmietaną, o łagodnym smaku.",
-        "krupnik z kaszy wiejskiej jęczmiennej z ziemniakami": "Sycący krupnik na bazie kaszy wiejskiej jęczmiennej, z dodatkiem ziemniaków, aromatycznie przyprawiony.",
-        "zupa pomidorowa z makaronem": "Klasyczna zupa pomidorowa z dodatkiem makaronu, lekko przyprawiona bazylią i oregano.",
-        "zupa szczawiowa z jajkiem": "Orzeźwiająca zupa szczawiowa, podawana z ugotowanym jajkiem, idealna na wiosnę.",
-        "zupa z zielonej fasolki szparagowej": "Lekka i kremowa zupa z młodej zielonej fasolki szparagowej, o subtelnym smaku.",
-        "rosół z makaronem": "Tradycyjny, klarowny rosół drobiowy podawany z makaronem, z nutą przypraw.",
-        "zupa buraczkowa zabielana": "Buraczkowa zupa o słodko-kwaskowatym smaku, zabielana śmietaną.",
-        "zupa tajska z kurczakiem": "Egzotyczna zupa tajska z dodatkiem kurczaka, aromatyzowana mlekiem kokosowym i przyprawami curry.",
-        "zupa owocowa z zacierką": "Lekka, owocowa zupa z dodatkiem zacierki, idealna na letnie dni.",
-        "zupa kapuśniak z młodej kapusty": "Tradycyjny kapuśniak przygotowany z młodej kapusty, o wyrazistym, kwaskowatym smaku.",
-        "zupa jarzynowa zabielana": "Zdrowa i sycąca zupa jarzynowa, zabielana śmietaną, pełna sezonowych warzyw.",
-        "zupa neapolitańska z makaronem": "Zupa inspirowana kuchnią włoską, z dodatkiem makaronu i pomidorów, o intensywnym smaku.",
-        "zupa minestrone": "Gęsta włoska zupa warzywna z dodatkiem fasoli i makaronu, bogata w składniki odżywcze.",
-        "zupa krem warzywny": "Kremowa zupa z mieszanki sezonowych warzyw, idealna dla miłośników delikatnych smaków.",
-        "zupa brokułowa zabielana": "Zupa z brokułów, delikatnie zabielana, z nutą czosnku i parmezanu.",
-        "zupa rosół z zacierką": "Alternatywna wersja tradycyjnego rosołu, podawana z domową zacierką.",
-        "zupa krupnik z ziemniakami": "Krupnik przygotowany z kaszy, z dodatkiem ziemniaków, lekko przyprawiony i sycący.",
+    // Lokalny słownik definicji – klucze zapisujemy w lowercase
+    const polishDefinitions = {
+      // Pierwsze dania
+      "zupa kalafiorowa zabielana": "Delikatna zupa na bazie kalafiora, zabielana śmietaną, o łagodnym smaku.",
+      "krupnik z kaszy wiejskiej jęczmiennej z ziemniakami": "Sycący krupnik na bazie kaszy wiejskiej jęczmiennej, z dodatkiem ziemniaków, aromatycznie przyprawiony.",
+      "zupa pomidorowa z makaronem": "Klasyczna zupa pomidorowa z dodatkiem makaronu, lekko przyprawiona bazylią i oregano.",
+      "zupa szczawiowa z jajkiem": "Orzeźwiająca zupa szczawiowa, podawana z ugotowanym jajkiem, idealna na wiosnę.",
+      "zupa z zielonej fasolki szparagowej": "Lekka i kremowa zupa z młodej zielonej fasolki szparagowej, o subtelnym smaku.",
+      "rosół z makaronem": "Tradycyjny, klarowny rosół drobiowy podawany z makaronem, z nutą przypraw.",
+      "zupa buraczkowa zabielana": "Buraczkowa zupa o słodko-kwaskowatym smaku, zabielana śmietaną.",
+      "zupa tajska z kurczakiem": "Egzotyczna zupa tajska z dodatkiem kurczaka, aromatyzowana mlekiem kokosowym i przyprawami curry.",
+      "zupa owocowa z zacierką": "Lekka, owocowa zupa z dodatkiem zacierki, idealna na letnie dni.",
+      "zupa kapuśniak z młodej kapusty": "Tradycyjny kapuśniak przygotowany z młodej kapusty, o wyrazistym, kwaskowatym smaku.",
+      "zupa jarzynowa zabielana": "Zdrowa i sycąca zupa jarzynowa, zabielana śmietaną, pełna sezonowych warzyw.",
+      "zupa neapolitańska z makaronem": "Zupa inspirowana kuchnią włoską, z dodatkiem makaronu i pomidorów, o intensywnym smaku.",
+      "zupa minestrone": "Gęsta włoska zupa warzywna z dodatkiem fasoli i makaronu, bogata w składniki odżywcze.",
+      "zupa krem warzywny": "Kremowa zupa z mieszanki sezonowych warzyw, idealna dla miłośników delikatnych smaków.",
+      "zupa brokułowa zabielana": "Zupa z brokułów, delikatnie zabielana, z nutą czosnku i parmezanu.",
+      "zupa rosół z zacierką": "Alternatywna wersja tradycyjnego rosołu, podawana z domową zacierką.",
+      "zupa krupnik z ziemniakami": "Krupnik przygotowany z kaszy, z dodatkiem ziemniaków, lekko przyprawiony i sycący.",
 
-        // Drugie dania
-        "kotlet pożarski, ziemniaki puree, surówka": "Soczysty kotlet pożarski podawany z kremowym puree ziemniaczanym i świeżą surówką.",
-        "racuchy drożdżowe z jabłkami i cukrem pudrem": "Puszyste racuchy drożdżowe z dodatkiem słodkich jabłek, posypane cukrem pudrem.",
-        "gulasz wieprzowy z szynki, kasza, surówka": "Aromatyczny gulasz wieprzowy z szynki, serwowany z kaszą i surówką.",
-        "kotlet z kalafiora z ziemniakami, surówka": "Zdrowa alternatywa kotlet z kalafiora, podawany z ziemniakami i surówką.",
-        "kurczak w sosie potrawkowym z warzywami, kasza bulgur, surówka": "Delikatny kurczak duszony w aromatycznym sosie z warzywami, serwowany z kaszą bulgur i surówką.",
-        "schab po parysku, ziemniaki, surówka": "Schab przygotowany według paryskiej receptury, podawany z ziemniakami i świeżą surówką.",
-        "kotlet mielony, ziemniaki, surówka": "Tradycyjny kotlet mielony, podawany z ziemniakami oraz surówką.",
-        "pierogi z owocami i twarogiem": "Słodkie pierogi nadziewane mieszanką owoców i delikatnego twarogu, idealne na deser.",
-        "kotlet ziemniaczany z sosem pieczarkowym, surówka": "Kotlet ziemniaczany serwowany z aromatycznym sosem pieczarkowym oraz surówką.",
-        "makaron z sosem bolognese": "Klasyczny makaron z gęstym sosem bolognese, przygotowanym na bazie mięsa i pomidorów.",
-        "pieczeń z szynki , ziemniaki, surówka": "Soczysta pieczeń z szynki, podawana z ziemniakami i surówką.",
-        "gulasz drobiowy z pomidorami, kasza bulgur, surówka": "Lekkie danie z drobiu duszonego z pomidorami, podawane z kaszą bulgur i surówką.",
-        "placki z jabłkiem i marchewką z cukrem pudrem": "Chrupiące placki z dodatkiem jabłek i marchewki, posypane cukrem pudrem.",
-        "pulpety w sosie koperkowym, ziemniaki, surówka": "Małe pulpety mięsne w delikatnym sosie koperkowym, serwowane z ziemniakami i surówką.",
-        "paluszki rybne, ziemniak puree, surówka": "Chrupiące paluszki rybne, podawane z ziemniakowym puree i świeżą surówką.",
-        "pierogi ruskie": "Tradycyjne pierogi z farszem z ziemniaków i twarogu, lekko podsmażane na złoty kolor.",
-        "tortilla z kurczakiem": "Meksykańska tortilla wypełniona soczystym kurczakiem, warzywami i aromatycznymi przyprawami.",
-        "gołąbki odwrotnie w sosie pomidorowym, ziemniaki, surówka z buraczków": "Innowacyjna wersja gołąbków, podawana w sosie pomidorowym z ziemniakami i surówką z buraczków."
-      };
+      // Drugie dania
+      "kotlet pożarski, ziemniaki puree, surówka": "Soczysty kotlet pożarski podawany z kremowym puree ziemniaczanym i świeżą surówką.",
+      "racuchy drożdżowe z jabłkami i cukrem pudrem": "Puszyste racuchy drożdżowe z dodatkiem słodkich jabłek, posypane cukrem pudrem.",
+      "gulasz wieprzowy z szynki, kasza, surówka": "Aromatyczny gulasz wieprzowy z szynki, serwowany z kaszą i surówką.",
+      "kotlet z kalafiora z ziemniakami, surówka": "Zdrowa alternatywa kotlet z kalafiora, podawany z ziemniakami i surówką.",
+      "kurczak w sosie potrawkowym z warzywami, kasza bulgur, surówka": "Delikatny kurczak duszony w aromatycznym sosie z warzywami, serwowany z kaszą bulgur i surówką.",
+      "schab po parysku, ziemniaki, surówka": "Schab przygotowany według paryskiej receptury, podawany z ziemniakami i świeżą surówką.",
+      "kotlet mielony, ziemniaki, surówka": "Tradycyjny kotlet mielony, podawany z ziemniakami oraz surówką.",
+      "pierogi z owocami i twarogiem": "Słodkie pierogi nadziewane mieszanką owoców i delikatnego twarogu, idealne na deser.",
+      "kotlet ziemniaczany z sosem pieczarkowym, surówka": "Kotlet ziemniaczany serwowany z aromatycznym sosem pieczarkowym oraz surówką.",
+      "makaron z sosem bolognese": "Klasyczny makaron z gęstym sosem bolognese, przygotowanym na bazie mięsa i pomidorów.",
+      "pieczeń z szynki , ziemniaki, surówka": "Soczysta pieczeń z szynki, podawana z ziemniakami i surówką.",
+      "gulasz drobiowy z pomidorami, kasza bulgur, surówka": "Lekkie danie z drobiu duszonego z pomidorami, podawane z kaszą bulgur i surówką.",
+      "placki z jabłkiem i marchewką z cukrem pudrem": "Chrupiące placki z dodatkiem jabłek i marchewki, posypane cukrem pudrem.",
+      "pulpety w sosie koperkowym, ziemniaki, surówka": "Małe pulpety mięsne w delikatnym sosie koperkowym, serwowane z ziemniakami i surówką.",
+      "paluszki rybne, ziemniak puree, surówka": "Chrupiące paluszki rybne, podawane z ziemniakowym puree i świeżą surówką.",
+      "pierogi ruskie": "Tradycyjne pierogi z farszem z ziemniaków i twarogu, lekko podsmażane na złoty kolor.",
+      "tortilla z kurczakiem": "Meksykańska tortilla wypełniona soczystym kurczakiem, warzywami i aromatycznymi przyprawami.",
+      "gołąbki odwrotnie w sosie pomidorowym, ziemniaki, surówka z buraczków": "Innowacyjna wersja gołąbków, podawana w sosie pomidorowym z ziemniakami i surówką z buraczków."
+    };
 
     // Obsługa widoczności pola tekstowego i przycisku
     toggleTextareaCheckbox.addEventListener('change', function () {
@@ -170,45 +170,45 @@
       debugBox.classList.toggle('d-none', !this.checked);
     });
 
-  // Obsługa motywu z wykorzystaniem Bootstrap
-  function applyTheme(theme) {
-    const body = document.body;
-    const menuTable = document.getElementById('menuTable');
-    const summaryBox = document.getElementById('summaryBox');
-    const totalCostContainer = document.getElementById('totalCostAllMealsContainer');
+    // Obsługa motywu z wykorzystaniem Bootstrap
+    function applyTheme(theme) {
+      const body = document.body;
+      const menuTable = document.getElementById('menuTable');
+      const summaryBox = document.getElementById('summaryBox');
+      const totalCostContainer = document.getElementById('totalCostAllMealsContainer');
 
-    if (theme === 'dark') {
-      // Dla body
-      body.classList.replace('bg-light', 'bg-dark');
-      body.classList.replace('text-dark', 'text-light');
+      if (theme === 'dark') {
+        // Dla body
+        body.classList.replace('bg-light', 'bg-dark');
+        body.classList.replace('text-dark', 'text-light');
 
-      // Dla tabeli – dodajemy klasę table-dark (domyślny wygląd to brak tej klasy)
-      menuTable.classList.add('table-dark');
+        // Dla tabeli – dodajemy klasę table-dark (domyślny wygląd to brak tej klasy)
+        menuTable.classList.add('table-dark');
 
-      // Dla sekcji podsumowania
-      summaryBox.classList.replace('bg-light', 'bg-dark');
-      summaryBox.classList.replace('text-dark', 'text-light');
-      totalCostContainer.classList.replace('bg-light', 'bg-dark');
-      totalCostContainer.classList.replace('text-dark', 'text-light');
+        // Dla sekcji podsumowania
+        summaryBox.classList.replace('bg-light', 'bg-dark');
+        summaryBox.classList.replace('text-dark', 'text-light');
+        totalCostContainer.classList.replace('bg-light', 'bg-dark');
+        totalCostContainer.classList.replace('text-dark', 'text-light');
 
-      themeToggle.checked = true;
-    } else {
-      // Przywracamy styl jasny dla body
-      body.classList.replace('bg-dark', 'bg-light');
-      body.classList.replace('text-light', 'text-dark');
+        themeToggle.checked = true;
+      } else {
+        // Przywracamy styl jasny dla body
+        body.classList.replace('bg-dark', 'bg-light');
+        body.classList.replace('text-light', 'text-dark');
 
-      // Usuwamy klasę table-dark – tabela przyjmuje domyślny jasny styl
-      menuTable.classList.remove('table-dark');
+        // Usuwamy klasę table-dark – tabela przyjmuje domyślny jasny styl
+        menuTable.classList.remove('table-dark');
 
-      // Przywracamy jasny styl dla sekcji podsumowania
-      summaryBox.classList.replace('bg-dark', 'bg-light');
-      summaryBox.classList.replace('text-light', 'text-dark');
-      totalCostContainer.classList.replace('bg-dark', 'bg-light');
-      totalCostContainer.classList.replace('text-light', 'text-dark');
+        // Przywracamy jasny styl dla sekcji podsumowania
+        summaryBox.classList.replace('bg-dark', 'bg-light');
+        summaryBox.classList.replace('text-light', 'text-dark');
+        totalCostContainer.classList.replace('bg-dark', 'bg-light');
+        totalCostContainer.classList.replace('text-light', 'text-dark');
 
-      themeToggle.checked = false;
+        themeToggle.checked = false;
+      }
     }
-  }
 
     themeToggle.addEventListener('change', () => {
       const theme = themeToggle.checked ? 'dark' : 'light';
@@ -294,13 +294,14 @@
         let lp = 1;
         const parsedDates = {};
         let monthName = '';
+        let monthNumber = 0;
         for (let linia of linie) {
           linia = linia.trim();
           const matchDay = linia.match(/^(PONIEDZIAŁEK|WTOREK|ŚRODA|CZWARTEK|PIĄTEK)\s+(\d{2}\.(\d{2}))$/);
           if (matchDay) {
             const dzienTygodnia = matchDay[1];
             const dzienMiesiaca = matchDay[2];
-            const monthNumber = parseInt(matchDay[3]);
+            monthNumber = parseInt(matchDay[3]);
             monthName = getMonthName(monthNumber);
             parsedDates[dzienMiesiaca] = { dzienTygodnia, pierwszeDanie: null, drugieDanie: null };
             continue;
@@ -317,14 +318,26 @@
             }
           }
         }
-        // Załóżmy, że analizujemy menu dla kwietnia 2025
-        const firstDay = new Date(2025, 3, 1);
-        const lastDay = new Date(2025, 3, 30);
-        let currentDate = firstDay;
+        console.log('monthNumber:', monthNumber);
+
+        // obliczamy docelowy rok: +1 tylko gdy miesiąc to grudzień
+        const today = new Date();
+        const year = today.getFullYear() + (monthNumber === 12 ? 1 : 0);
+
+        // formatujemy miesiąc do dwóch cyfr
+        const monthString = monthNumber.toString().padStart(2, '0');
+
+        // pierwszy dzień miesiąca
+        const firstDay = new Date(year, monthNumber - 1, 1);
+        // ostatni dzień miesiąca: dzień 0 kolejnego miesiąca
+        const lastDay = new Date(year, monthNumber, 0);
+
+        let currentDate = new Date(firstDay);
         while (currentDate <= lastDay) {
           const dayOfWeek = getDayOfWeekPL(currentDate.getDay());
           const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
-          const dateKey = `${dayOfMonth}.04`;
+          // teraz monthString ma zawsze 2 cyfry, np. "01", "09", "10", "12"
+          const dateKey = `${dayOfMonth}.${monthString}`;
           const row = menuTableBody.insertRow();
           row.insertCell().textContent = lp++;
           row.insertCell().textContent = dateKey;
