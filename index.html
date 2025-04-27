@@ -95,6 +95,8 @@
         </tr>
       </tfoot>
     </table>
+    <button id="generateDeclarationBtn" class="btn btn-warning my-3">GENERUJ DEKLARACJĘ</button>
+    <div id="declarationTableContainer" class="mt-4"></div>
   </div>
 
   <!-- Skrypty -->
@@ -103,6 +105,8 @@
   <!-- Popper.js i Tippy.js -->
   <script src="https://unpkg.com/@popperjs/core@2"></script>
   <script src="https://unpkg.com/tippy.js@6"></script>
+    <script src="definitions.js"></script>
+
   <script>
     // Elementy interfejsu
     const toggleTextareaCheckbox = document.getElementById('toggleTextarea');
@@ -116,48 +120,35 @@
     const fileInput = document.getElementById('fileInput');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const themeToggle = document.getElementById('themeToggle');
-
-    // Lokalny słownik definicji – klucze zapisujemy w lowercase
-    const polishDefinitions = {
-      // Pierwsze dania
-      "zupa kalafiorowa zabielana": "Delikatna zupa na bazie kalafiora, zabielana śmietaną, o łagodnym smaku.",
-      "krupnik z kaszy wiejskiej jęczmiennej z ziemniakami": "Sycący krupnik na bazie kaszy wiejskiej jęczmiennej, z dodatkiem ziemniaków, aromatycznie przyprawiony.",
-      "zupa pomidorowa z makaronem": "Klasyczna zupa pomidorowa z dodatkiem makaronu, lekko przyprawiona bazylią i oregano.",
-      "zupa szczawiowa z jajkiem": "Orzeźwiająca zupa szczawiowa, podawana z ugotowanym jajkiem, idealna na wiosnę.",
-      "zupa z zielonej fasolki szparagowej": "Lekka i kremowa zupa z młodej zielonej fasolki szparagowej, o subtelnym smaku.",
-      "rosół z makaronem": "Tradycyjny, klarowny rosół drobiowy podawany z makaronem, z nutą przypraw.",
-      "zupa buraczkowa zabielana": "Buraczkowa zupa o słodko-kwaskowatym smaku, zabielana śmietaną.",
-      "zupa tajska z kurczakiem": "Egzotyczna zupa tajska z dodatkiem kurczaka, aromatyzowana mlekiem kokosowym i przyprawami curry.",
-      "zupa owocowa z zacierką": "Lekka, owocowa zupa z dodatkiem zacierki, idealna na letnie dni.",
-      "zupa kapuśniak z młodej kapusty": "Tradycyjny kapuśniak przygotowany z młodej kapusty, o wyrazistym, kwaskowatym smaku.",
-      "zupa jarzynowa zabielana": "Zdrowa i sycąca zupa jarzynowa, zabielana śmietaną, pełna sezonowych warzyw.",
-      "zupa neapolitańska z makaronem": "Zupa inspirowana kuchnią włoską, z dodatkiem makaronu i pomidorów, o intensywnym smaku.",
-      "zupa minestrone": "Gęsta włoska zupa warzywna z dodatkiem fasoli i makaronu, bogata w składniki odżywcze.",
-      "zupa krem warzywny": "Kremowa zupa z mieszanki sezonowych warzyw, idealna dla miłośników delikatnych smaków.",
-      "zupa brokułowa zabielana": "Zupa z brokułów, delikatnie zabielana, z nutą czosnku i parmezanu.",
-      "zupa rosół z zacierką": "Alternatywna wersja tradycyjnego rosołu, podawana z domową zacierką.",
-      "zupa krupnik z ziemniakami": "Krupnik przygotowany z kaszy, z dodatkiem ziemniaków, lekko przyprawiony i sycący.",
-
-      // Drugie dania
-      "kotlet pożarski, ziemniaki puree, surówka": "Soczysty kotlet pożarski podawany z kremowym puree ziemniaczanym i świeżą surówką.",
-      "racuchy drożdżowe z jabłkami i cukrem pudrem": "Puszyste racuchy drożdżowe z dodatkiem słodkich jabłek, posypane cukrem pudrem.",
-      "gulasz wieprzowy z szynki, kasza, surówka": "Aromatyczny gulasz wieprzowy z szynki, serwowany z kaszą i surówką.",
-      "kotlet z kalafiora z ziemniakami, surówka": "Zdrowa alternatywa kotlet z kalafiora, podawany z ziemniakami i surówką.",
-      "kurczak w sosie potrawkowym z warzywami, kasza bulgur, surówka": "Delikatny kurczak duszony w aromatycznym sosie z warzywami, serwowany z kaszą bulgur i surówką.",
-      "schab po parysku, ziemniaki, surówka": "Schab przygotowany według paryskiej receptury, podawany z ziemniakami i świeżą surówką.",
-      "kotlet mielony, ziemniaki, surówka": "Tradycyjny kotlet mielony, podawany z ziemniakami oraz surówką.",
-      "pierogi z owocami i twarogiem": "Słodkie pierogi nadziewane mieszanką owoców i delikatnego twarogu, idealne na deser.",
-      "kotlet ziemniaczany z sosem pieczarkowym, surówka": "Kotlet ziemniaczany serwowany z aromatycznym sosem pieczarkowym oraz surówką.",
-      "makaron z sosem bolognese": "Klasyczny makaron z gęstym sosem bolognese, przygotowanym na bazie mięsa i pomidorów.",
-      "pieczeń z szynki , ziemniaki, surówka": "Soczysta pieczeń z szynki, podawana z ziemniakami i surówką.",
-      "gulasz drobiowy z pomidorami, kasza bulgur, surówka": "Lekkie danie z drobiu duszonego z pomidorami, podawane z kaszą bulgur i surówką.",
-      "placki z jabłkiem i marchewką z cukrem pudrem": "Chrupiące placki z dodatkiem jabłek i marchewki, posypane cukrem pudrem.",
-      "pulpety w sosie koperkowym, ziemniaki, surówka": "Małe pulpety mięsne w delikatnym sosie koperkowym, serwowane z ziemniakami i surówką.",
-      "paluszki rybne, ziemniak puree, surówka": "Chrupiące paluszki rybne, podawane z ziemniakowym puree i świeżą surówką.",
-      "pierogi ruskie": "Tradycyjne pierogi z farszem z ziemniaków i twarogu, lekko podsmażane na złoty kolor.",
-      "tortilla z kurczakiem": "Meksykańska tortilla wypełniona soczystym kurczakiem, warzywami i aromatycznymi przyprawami.",
-      "gołąbki odwrotnie w sosie pomidorowym, ziemniaki, surówka z buraczków": "Innowacyjna wersja gołąbków, podawana w sosie pomidorowym z ziemniakami i surówką z buraczków."
+    const generateDeclarationBtn = document.getElementById('generateDeclarationBtn');
+generateDeclarationBtn.addEventListener('click', generateDeclaration);
+function generateDeclaration() {
+      const rows = [...document.querySelectorAll('#menuTable tbody tr')];
+      rows.forEach(r => {
+        const [dd, mm] = r.cells[1].textContent.split('.').map(Number);
+        const d = new Date(new Date().getFullYear() + (mm === 12 ? 1 : 0), mm - 1, dd);
+        const wd = d.getDay();
+        let v;
+        if (r.classList.contains('table-secondary')) v = 'X';
+        else {
+          const [cb1, cb2] = r.querySelectorAll('input[type=checkbox]');
+          v = cb1.checked && cb2.checked ? '3' : cb1.checked ? '1' : cb2.checked ? '2' : '';
+        }
+        r._val = v; r._wd = wd;
+      });
+      let html = '<table class="table table-bordered"><tbody>';
+      rows.filter(r => r._wd === 1).forEach(mon => {
+        html += '<tr>';
+        const idx = rows.indexOf(mon);
+        for (let i = 0; i < 5; i++) {
+          const r = rows[idx + i]; html += `<td>${r ? r._val : 'X'}</td>`;
+        }
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      document.getElementById('declarationTableContainer').innerHTML = html;
     };
+
 
     // Obsługa widoczności pola tekstowego i przycisku
     toggleTextareaCheckbox.addEventListener('change', function () {
@@ -297,26 +288,26 @@
         let monthNumber = 0;
         for (let linia of linie) {
           linia = linia.trim();
-          const matchDay = linia.match(/^(PONIEDZIAŁEK|WTOREK|ŚRODA|CZWARTEK|PIĄTEK)\s+(\d{2}\.(\d{2}))$/);
-          if (matchDay) {
-            const dzienTygodnia = matchDay[1];
-            const dzienMiesiaca = matchDay[2];
-            monthNumber = parseInt(matchDay[3]);
-            monthName = getMonthName(monthNumber);
-            parsedDates[dzienMiesiaca] = { dzienTygodnia, pierwszeDanie: null, drugieDanie: null };
-            continue;
-          }
-          if (Object.keys(parsedDates).length > 0) {
-            const ostatniDzien = Object.keys(parsedDates).pop();
-            if (parsedDates[ostatniDzien].pierwszeDanie === null) {
-              parsedDates[ostatniDzien].pierwszeDanie = linia;
-              continue;
-            }
-            if (parsedDates[ostatniDzien].drugieDanie === null) {
-              parsedDates[ostatniDzien].drugieDanie = linia;
-              continue;
-            }
-          }
+// 1) Jeśli linia zawiera datę DD.MM – ignorujemy literówki dni tygodnia
+const dateMatch = linia.match(/(\d{2}\.(\d{2}))/);
+if (dateMatch) {
+  const dateKey     = dateMatch[1];               // np. "05.05"
+  monthNumber       = parseInt(dateMatch[2], 10); // np. 5
+  monthName         = getMonthName(monthNumber);
+  parsedDates[dateKey] = { pierwszeDanie: null, drugieDanie: null };
+  continue;
+}
+// 2) Wypełniamy kolejne linie – pierwsze i drugie danie
+const lastKey = Object.keys(parsedDates).pop();
+if (lastKey && parsedDates[lastKey].pierwszeDanie === null) {
+  parsedDates[lastKey].pierwszeDanie = linia;
+  continue;
+}
+if (lastKey && parsedDates[lastKey].drugieDanie === null) {
+  parsedDates[lastKey].drugieDanie = linia;
+  continue;
+}
+
         }
         console.log('monthNumber:', monthNumber);
 
@@ -333,11 +324,10 @@
         const lastDay = new Date(year, monthNumber, 0);
 
         let currentDate = new Date(firstDay);
-        while (currentDate <= lastDay) {
-          const dayOfWeek = getDayOfWeekPL(currentDate.getDay());
-          const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
-          // teraz monthString ma zawsze 2 cyfry, np. "01", "09", "10", "12"
-          const dateKey = `${dayOfMonth}.${monthString}`;
+while (currentDate <= lastDay) {
+  const dayOfWeek  = getDayOfWeekPL(currentDate.getDay());
+  const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
+  const dateKey    = `${dayOfMonth}.${monthString}`;
           const row = menuTableBody.insertRow();
           row.insertCell().textContent = lp++;
           row.insertCell().textContent = dateKey;
