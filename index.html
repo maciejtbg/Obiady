@@ -271,100 +271,216 @@ function generateDeclaration() {
         });
     }
 
-    function parseMenu(jsonTekst) {
-      try {
-        const dane = JSON.parse(jsonTekst);
-        if (!dane || !dane.Successful || !dane.TextResult) {
-          document.getElementById('warningBox').classList.remove('d-none');
-          return;
-        }
-        const tekstMenu = dane.TextResult;
-        const linie = tekstMenu.split('\n').filter(linia => linia.trim() !== '');
-        const menuTableBody = document.querySelector('#menuTable tbody');
-        menuTableBody.innerHTML = '';
-        let lp = 1;
-        const parsedDates = {};
-        let monthName = '';
-        let monthNumber = 0;
-        for (let linia of linie) {
-          linia = linia.trim();
-// 1) Jeśli linia zawiera datę DD.MM – ignorujemy literówki dni tygodnia
-const dateMatch = linia.match(/(\d{2}\.(\d{2}))/);
+//     function parseMenu(jsonTekst) {
+//       try {
+//         const dane = JSON.parse(jsonTekst);
+//         if (!dane || !dane.Successful || !dane.TextResult) {
+//           document.getElementById('warningBox').classList.remove('d-none');
+//           return;
+//         }
+//         const tekstMenu = dane.TextResult;
+//         const linie = tekstMenu.split('\n').filter(linia => linia.trim() !== '');
+//         const menuTableBody = document.querySelector('#menuTable tbody');
+//         menuTableBody.innerHTML = '';
+//         let lp = 1;
+//         const parsedDates = {};
+//         let monthName = '';
+//         let monthNumber = 0;
+//         for (let linia of linie) {
+//           linia = linia.trim();
+// // 1) Jeśli linia zawiera datę DD.MM – ignorujemy literówki dni tygodnia
+// const dateMatch = linia.match(/(\d{2}\.(\d{2}))/);
+// if (dateMatch) {
+//   const dateKey     = dateMatch[1];               // np. "05.05"
+//   monthNumber       = parseInt(dateMatch[2], 10); // np. 5
+//   monthName         = getMonthName(monthNumber);
+//   parsedDates[dateKey] = { pierwszeDanie: null, drugieDanie: null };
+//   continue;
+// }
+// // 2) Wypełniamy kolejne linie – pierwsze i drugie danie
+// const lastKey = Object.keys(parsedDates).pop();
+// if (lastKey && parsedDates[lastKey].pierwszeDanie === null) {
+//   parsedDates[lastKey].pierwszeDanie = linia;
+//   continue;
+// }
+// if (lastKey && parsedDates[lastKey].drugieDanie === null) {
+//   parsedDates[lastKey].drugieDanie = linia;
+//   continue;
+// }
+
+//         }
+//         console.log('monthNumber:', monthNumber);
+
+//         // obliczamy docelowy rok: +1 tylko gdy miesiąc to grudzień
+//         const today = new Date();
+//         const year = today.getFullYear() + (monthNumber === 12 ? 1 : 0);
+
+//         // formatujemy miesiąc do dwóch cyfr
+//         const monthString = monthNumber.toString().padStart(2, '0');
+
+//         // pierwszy dzień miesiąca
+//         const firstDay = new Date(year, monthNumber - 1, 1);
+//         // ostatni dzień miesiąca: dzień 0 kolejnego miesiąca
+//         const lastDay = new Date(year, monthNumber, 0);
+
+//         let currentDate = new Date(firstDay);
+// while (currentDate <= lastDay) {
+//   const dayOfWeek  = getDayOfWeekPL(currentDate.getDay());
+//   const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
+//   const dateKey    = `${dayOfMonth}.${monthString}`;
+//           const row = menuTableBody.insertRow();
+//           row.insertCell().textContent = lp++;
+//           row.insertCell().textContent = dateKey;
+//           row.insertCell().textContent = dayOfWeek;
+//           const cellPierwsze = row.insertCell();
+//           const cellWyborPierwsze = row.insertCell();
+//           const cellDrugie = row.insertCell();
+//           const cellWyborDrugie = row.insertCell();
+//           if (parsedDates[dateKey]) {
+//             cellPierwsze.textContent = parsedDates[dateKey].pierwszeDanie || '';
+//             cellPierwsze.classList.add('dish-name');
+//             const checkboxPierwsze = document.createElement('input');
+//             checkboxPierwsze.type = 'checkbox';
+//             checkboxPierwsze.classList.add('form-check-input');
+//             checkboxPierwsze.checked = true;
+//             cellWyborPierwsze.appendChild(checkboxPierwsze);
+//             cellDrugie.textContent = parsedDates[dateKey].drugieDanie || '';
+//             cellDrugie.classList.add('dish-name');
+//             const checkboxDrugie = document.createElement('input');
+//             checkboxDrugie.type = 'checkbox';
+//             checkboxDrugie.classList.add('form-check-input');
+//             checkboxDrugie.checked = true;
+//             cellWyborDrugie.appendChild(checkboxDrugie);
+//           } else {
+//             row.classList.add('table-secondary');
+//           }
+//           currentDate.setDate(currentDate.getDate() + 1);
+//         }
+//         document.getElementById('summaryMonth').textContent = monthName;
+//         summaryBox.style.display = 'flex';
+//         totalCostAllMealsContainer.classList.remove('d-none');
+//         attachSummaryListeners();
+//         attachTooltipListeners();
+//       } catch (error) {
+//         document.getElementById('warningBox').classList.remove('d-none');
+//       }
+//     }
+
+function parseMenu(jsonTekst) {
+  try {
+    const debugEnabled = toggleDebugCheckbox.checked;
+    const debugLog = [];
+
+    const dane = JSON.parse(jsonTekst);
+    if (!dane || !dane.Successful || !dane.TextResult) {
+      document.getElementById('warningBox').classList.remove('d-none');
+      return;
+    }
+
+    const tekstMenu = dane.TextResult;
+    const linie = tekstMenu.split('\n').filter(linia => linia.trim() !== '');
+    const menuTableBody = document.querySelector('#menuTable tbody');
+    menuTableBody.innerHTML = '';
+    let lp = 1;
+    const parsedDates = {};
+    let monthName = '';
+    let monthNumber = 0;
+
+    for (let linia of linie) {
+      linia = linia.trim();
+
+const dateMatch = linia.match(/([A-ZŁŚĆŹŻĘÓŃ]+\s+)?(\d{1,2})\.(\d{2})/i);
 if (dateMatch) {
-  const dateKey     = dateMatch[1];               // np. "05.05"
-  monthNumber       = parseInt(dateMatch[2], 10); // np. 5
-  monthName         = getMonthName(monthNumber);
+  const day = dateMatch[2].padStart(2, '0');  // dzień
+  const month = dateMatch[3].padStart(2, '0'); // miesiąc
+  const dateKey = `${day}.${month}`;
+  monthNumber = parseInt(month, 10);
+  monthName = getMonthName(monthNumber);
   parsedDates[dateKey] = { pierwszeDanie: null, drugieDanie: null };
-  continue;
-}
-// 2) Wypełniamy kolejne linie – pierwsze i drugie danie
-const lastKey = Object.keys(parsedDates).pop();
-if (lastKey && parsedDates[lastKey].pierwszeDanie === null) {
-  parsedDates[lastKey].pierwszeDanie = linia;
-  continue;
-}
-if (lastKey && parsedDates[lastKey].drugieDanie === null) {
-  parsedDates[lastKey].drugieDanie = linia;
+
+  if (debugEnabled) debugLog.push(`🔎 Rozpoznano datę: ${dateKey} (${linia})`);
   continue;
 }
 
-        }
-        console.log('monthNumber:', monthNumber);
 
-        // obliczamy docelowy rok: +1 tylko gdy miesiąc to grudzień
-        const today = new Date();
-        const year = today.getFullYear() + (monthNumber === 12 ? 1 : 0);
+      const lastKey = Object.keys(parsedDates).pop();
+      if (lastKey && parsedDates[lastKey].pierwszeDanie === null) {
+        parsedDates[lastKey].pierwszeDanie = linia;
+        if (debugEnabled) debugLog.push(`🍲 Pierwsze danie dla ${lastKey}: ${linia}`);
+        continue;
+      }
 
-        // formatujemy miesiąc do dwóch cyfr
-        const monthString = monthNumber.toString().padStart(2, '0');
-
-        // pierwszy dzień miesiąca
-        const firstDay = new Date(year, monthNumber - 1, 1);
-        // ostatni dzień miesiąca: dzień 0 kolejnego miesiąca
-        const lastDay = new Date(year, monthNumber, 0);
-
-        let currentDate = new Date(firstDay);
-while (currentDate <= lastDay) {
-  const dayOfWeek  = getDayOfWeekPL(currentDate.getDay());
-  const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
-  const dateKey    = `${dayOfMonth}.${monthString}`;
-          const row = menuTableBody.insertRow();
-          row.insertCell().textContent = lp++;
-          row.insertCell().textContent = dateKey;
-          row.insertCell().textContent = dayOfWeek;
-          const cellPierwsze = row.insertCell();
-          const cellWyborPierwsze = row.insertCell();
-          const cellDrugie = row.insertCell();
-          const cellWyborDrugie = row.insertCell();
-          if (parsedDates[dateKey]) {
-            cellPierwsze.textContent = parsedDates[dateKey].pierwszeDanie || '';
-            cellPierwsze.classList.add('dish-name');
-            const checkboxPierwsze = document.createElement('input');
-            checkboxPierwsze.type = 'checkbox';
-            checkboxPierwsze.classList.add('form-check-input');
-            checkboxPierwsze.checked = true;
-            cellWyborPierwsze.appendChild(checkboxPierwsze);
-            cellDrugie.textContent = parsedDates[dateKey].drugieDanie || '';
-            cellDrugie.classList.add('dish-name');
-            const checkboxDrugie = document.createElement('input');
-            checkboxDrugie.type = 'checkbox';
-            checkboxDrugie.classList.add('form-check-input');
-            checkboxDrugie.checked = true;
-            cellWyborDrugie.appendChild(checkboxDrugie);
-          } else {
-            row.classList.add('table-secondary');
-          }
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-        document.getElementById('summaryMonth').textContent = monthName;
-        summaryBox.style.display = 'flex';
-        totalCostAllMealsContainer.classList.remove('d-none');
-        attachSummaryListeners();
-        attachTooltipListeners();
-      } catch (error) {
-        document.getElementById('warningBox').classList.remove('d-none');
+      if (lastKey && parsedDates[lastKey].drugieDanie === null) {
+        parsedDates[lastKey].drugieDanie = linia;
+        if (debugEnabled) debugLog.push(`🥘 Drugie danie dla ${lastKey}: ${linia}`);
+        continue;
       }
     }
+
+    const today = new Date();
+    const year = today.getFullYear() + (monthNumber === 12 ? 1 : 0);
+    const monthString = monthNumber.toString().padStart(2, '0');
+    const firstDay = new Date(year, monthNumber - 1, 1);
+    const lastDay = new Date(year, monthNumber, 0);
+
+    let currentDate = new Date(firstDay);
+    while (currentDate <= lastDay) {
+      const dayOfWeek = getDayOfWeekPL(currentDate.getDay());
+      const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
+      const dateKey = `${dayOfMonth}.${monthString}`;
+      const row = menuTableBody.insertRow();
+      row.insertCell().textContent = lp++;
+      row.insertCell().textContent = dateKey;
+      row.insertCell().textContent = dayOfWeek;
+      const cellPierwsze = row.insertCell();
+      const cellWyborPierwsze = row.insertCell();
+      const cellDrugie = row.insertCell();
+      const cellWyborDrugie = row.insertCell();
+
+      if (parsedDates[dateKey]) {
+        cellPierwsze.textContent = parsedDates[dateKey].pierwszeDanie || '';
+        cellPierwsze.classList.add('dish-name');
+        const checkboxPierwsze = document.createElement('input');
+        checkboxPierwsze.type = 'checkbox';
+        checkboxPierwsze.classList.add('form-check-input');
+        checkboxPierwsze.checked = true;
+        cellWyborPierwsze.appendChild(checkboxPierwsze);
+
+        cellDrugie.textContent = parsedDates[dateKey].drugieDanie || '';
+        cellDrugie.classList.add('dish-name');
+        const checkboxDrugie = document.createElement('input');
+        checkboxDrugie.type = 'checkbox';
+        checkboxDrugie.classList.add('form-check-input');
+        checkboxDrugie.checked = true;
+        cellWyborDrugie.appendChild(checkboxDrugie);
+
+        if (debugEnabled) debugLog.push(`📅 Dodano do tabeli: ${dateKey} (${dayOfWeek})`);
+      } else {
+        row.classList.add('table-secondary');
+        if (debugEnabled) debugLog.push(`⚠️ Brak danych dla ${dateKey} (${dayOfWeek})`);
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    document.getElementById('summaryMonth').textContent = monthName;
+    summaryBox.style.display = 'flex';
+    totalCostAllMealsContainer.classList.remove('d-none');
+    attachSummaryListeners();
+    attachTooltipListeners();
+
+    // Wyświetl debugLog
+    if (debugEnabled && debugLog.length > 0) {
+      debugBox.innerHTML = debugLog.join('<br>');
+    }
+  } catch (error) {
+    document.getElementById('warningBox').classList.remove('d-none');
+    if (toggleDebugCheckbox.checked) {
+      debugBox.innerHTML = `❌ Błąd parsowania:<br>${error.message}`;
+    }
+  }
+}
+
 
     function getMonthName(monthNumber) {
       const months = ["", "stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia", "września", "października", "listopada", "grudnia"];
