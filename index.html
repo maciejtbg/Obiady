@@ -122,32 +122,43 @@
     const themeToggle = document.getElementById('themeToggle');
     const generateDeclarationBtn = document.getElementById('generateDeclarationBtn');
 generateDeclarationBtn.addEventListener('click', generateDeclaration);
+
 function generateDeclaration() {
-      const rows = [...document.querySelectorAll('#menuTable tbody tr')];
-      rows.forEach(r => {
-        const [dd, mm] = r.cells[1].textContent.split('.').map(Number);
-        const d = new Date(new Date().getFullYear() + (mm === 12 ? 1 : 0), mm - 1, dd);
-        const wd = d.getDay();
-        let v;
-        if (r.classList.contains('table-secondary')) v = 'X';
-        else {
-          const [cb1, cb2] = r.querySelectorAll('input[type=checkbox]');
-          v = cb1.checked && cb2.checked ? '3' : cb1.checked ? '1' : cb2.checked ? '2' : '';
-        }
-        r._val = v; r._wd = wd;
-      });
-      let html = '<table class="table table-bordered"><tbody>';
-      rows.filter(r => r._wd === 1).forEach(mon => {
-        html += '<tr>';
-        const idx = rows.indexOf(mon);
-        for (let i = 0; i < 5; i++) {
-          const r = rows[idx + i]; html += `<td>${r ? r._val : 'X'}</td>`;
-        }
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-      document.getElementById('declarationTableContainer').innerHTML = html;
-    };
+  const rows = [...document.querySelectorAll('#menuTable tbody tr')];
+  rows.forEach(r => {
+    const [dd, mm] = r.cells[1].textContent.split('.').map(Number);
+    const d = new Date(new Date().getFullYear() + (mm === 12 ? 1 : 0), mm - 1, dd);
+    const wd = d.getDay();
+    let v;
+    if (r.classList.contains('table-secondary')) v = 'X';
+    else {
+      const [cb1, cb2] = r.querySelectorAll('input[type=checkbox]');
+      v = cb1.checked && cb2.checked ? '3' : cb1.checked ? '1' : cb2.checked ? '2' : '-';
+    }
+    r._val = v; 
+    r._wd = wd;
+    r._date = `${dd.toString().padStart(2,'0')}.${mm.toString().padStart(2,'0')}`;
+  });
+
+  let html = '<table class="table table-bordered"><tbody>';
+  rows.filter(r => r._wd === 1).forEach(mon => {
+    html += '<tr>';
+    const idx = rows.indexOf(mon);
+    for (let i = 0; i < 5; i++) {
+      const r = rows[idx + i];
+      if (!r || r._val === 'X') {
+        html += `<td style="text-align:center;">X</td>`;
+      } else {
+        html += `<td><div>${r._date}</div><div>${r._val}</div></td>`;
+      }
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('declarationTableContainer').innerHTML = html;
+};
+
+
 
 
     // Obsługa widoczności pola tekstowego i przycisku
@@ -271,100 +282,6 @@ function generateDeclaration() {
         });
     }
 
-//     function parseMenu(jsonTekst) {
-//       try {
-//         const dane = JSON.parse(jsonTekst);
-//         if (!dane || !dane.Successful || !dane.TextResult) {
-//           document.getElementById('warningBox').classList.remove('d-none');
-//           return;
-//         }
-//         const tekstMenu = dane.TextResult;
-//         const linie = tekstMenu.split('\n').filter(linia => linia.trim() !== '');
-//         const menuTableBody = document.querySelector('#menuTable tbody');
-//         menuTableBody.innerHTML = '';
-//         let lp = 1;
-//         const parsedDates = {};
-//         let monthName = '';
-//         let monthNumber = 0;
-//         for (let linia of linie) {
-//           linia = linia.trim();
-// // 1) Jeśli linia zawiera datę DD.MM – ignorujemy literówki dni tygodnia
-// const dateMatch = linia.match(/(\d{2}\.(\d{2}))/);
-// if (dateMatch) {
-//   const dateKey     = dateMatch[1];               // np. "05.05"
-//   monthNumber       = parseInt(dateMatch[2], 10); // np. 5
-//   monthName         = getMonthName(monthNumber);
-//   parsedDates[dateKey] = { pierwszeDanie: null, drugieDanie: null };
-//   continue;
-// }
-// // 2) Wypełniamy kolejne linie – pierwsze i drugie danie
-// const lastKey = Object.keys(parsedDates).pop();
-// if (lastKey && parsedDates[lastKey].pierwszeDanie === null) {
-//   parsedDates[lastKey].pierwszeDanie = linia;
-//   continue;
-// }
-// if (lastKey && parsedDates[lastKey].drugieDanie === null) {
-//   parsedDates[lastKey].drugieDanie = linia;
-//   continue;
-// }
-
-//         }
-//         console.log('monthNumber:', monthNumber);
-
-//         // obliczamy docelowy rok: +1 tylko gdy miesiąc to grudzień
-//         const today = new Date();
-//         const year = today.getFullYear() + (monthNumber === 12 ? 1 : 0);
-
-//         // formatujemy miesiąc do dwóch cyfr
-//         const monthString = monthNumber.toString().padStart(2, '0');
-
-//         // pierwszy dzień miesiąca
-//         const firstDay = new Date(year, monthNumber - 1, 1);
-//         // ostatni dzień miesiąca: dzień 0 kolejnego miesiąca
-//         const lastDay = new Date(year, monthNumber, 0);
-
-//         let currentDate = new Date(firstDay);
-// while (currentDate <= lastDay) {
-//   const dayOfWeek  = getDayOfWeekPL(currentDate.getDay());
-//   const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
-//   const dateKey    = `${dayOfMonth}.${monthString}`;
-//           const row = menuTableBody.insertRow();
-//           row.insertCell().textContent = lp++;
-//           row.insertCell().textContent = dateKey;
-//           row.insertCell().textContent = dayOfWeek;
-//           const cellPierwsze = row.insertCell();
-//           const cellWyborPierwsze = row.insertCell();
-//           const cellDrugie = row.insertCell();
-//           const cellWyborDrugie = row.insertCell();
-//           if (parsedDates[dateKey]) {
-//             cellPierwsze.textContent = parsedDates[dateKey].pierwszeDanie || '';
-//             cellPierwsze.classList.add('dish-name');
-//             const checkboxPierwsze = document.createElement('input');
-//             checkboxPierwsze.type = 'checkbox';
-//             checkboxPierwsze.classList.add('form-check-input');
-//             checkboxPierwsze.checked = true;
-//             cellWyborPierwsze.appendChild(checkboxPierwsze);
-//             cellDrugie.textContent = parsedDates[dateKey].drugieDanie || '';
-//             cellDrugie.classList.add('dish-name');
-//             const checkboxDrugie = document.createElement('input');
-//             checkboxDrugie.type = 'checkbox';
-//             checkboxDrugie.classList.add('form-check-input');
-//             checkboxDrugie.checked = true;
-//             cellWyborDrugie.appendChild(checkboxDrugie);
-//           } else {
-//             row.classList.add('table-secondary');
-//           }
-//           currentDate.setDate(currentDate.getDate() + 1);
-//         }
-//         document.getElementById('summaryMonth').textContent = monthName;
-//         summaryBox.style.display = 'flex';
-//         totalCostAllMealsContainer.classList.remove('d-none');
-//         attachSummaryListeners();
-//         attachTooltipListeners();
-//       } catch (error) {
-//         document.getElementById('warningBox').classList.remove('d-none');
-//       }
-//     }
 
 function parseMenu(jsonTekst) {
   try {
@@ -536,17 +453,43 @@ if (dateMatch) {
       updateSummary();
     }
 
-    function attachTooltipListeners() {
-      tippy('.dish-name', {
-        content(reference) {
-          const dish = reference.textContent.trim().toLowerCase();
-          return polishDefinitions[dish] || 'Brak definicji.';
-        },
-        allowHTML: false,
-        theme: localStorage.getItem('theme') === 'dark' ? 'dark' : 'light',
-        placement: 'top'
-      });
+function attachTooltipListeners() {
+  const debugEnabled = toggleDebugCheckbox.checked;
+  const debugLog = [];
+
+  const elements = document.querySelectorAll('.dish-name');
+
+  elements.forEach(el => {
+    const dishText = el.textContent.trim().toLowerCase();
+    let matchedKey = null;
+
+    for (const keyword in keywordDefinitions) {
+      if (dishText.includes(keyword)) {
+        matchedKey = keyword;
+        break;
+      }
     }
+
+    if (!matchedKey && debugEnabled) {
+      debugLog.push(`❗ Brak definicji dla dania: <strong>${dishText}</strong>`);
+      el.classList.add('text-danger');
+    }
+
+    tippy(el, {
+      content: matchedKey ? keywordDefinitions[matchedKey] : 'Brak definicji.',
+      allowHTML: true,
+      theme: localStorage.getItem('theme') === 'dark' ? 'dark' : 'light',
+      placement: 'top',
+    });
+  });
+
+  if (debugEnabled && debugLog.length > 0) {
+    debugBox.innerHTML += '<br><br><strong>⚠️ Dania bez definicji:</strong><br>' + debugLog.join('<br>');
+  }
+}
+
+
+
   </script>
 </body>
 
