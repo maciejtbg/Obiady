@@ -97,6 +97,8 @@
     </table>
     <button id="generateDeclarationBtn" class="btn btn-warning my-3">GENERUJ DEKLARACJĘ</button>
     <div id="declarationTableContainer" class="mt-4"></div>
+    <button class="btn btn-light my-3" onclick="copyDeclarationTable()">Kopiuj tabelę</button>
+
   </div>
 
   <!-- Skrypty -->
@@ -123,40 +125,113 @@
     const generateDeclarationBtn = document.getElementById('generateDeclarationBtn');
 generateDeclarationBtn.addEventListener('click', generateDeclaration);
 
+
+
 function generateDeclaration() {
   const rows = [...document.querySelectorAll('#menuTable tbody tr')];
+  if (rows.length === 0) {
+    document.getElementById('declarationTableContainer').innerHTML = '<p>Brak danych w tabeli.</p>';
+    return;
+  }
+
+  // Ustalamy rok na podstawie sekwencji — tylko do wyliczania dni tygodnia, jeśli potrzebne.
+  let currentYear = new Date().getFullYear();
+  let prevMonth = null;
+
+  // Przypiszemy meta pola (_val, _wd, _date) do każdego wiersza.
   rows.forEach(r => {
-    const [dd, mm] = r.cells[1].textContent.split('.').map(Number);
-    const d = new Date(new Date().getFullYear() + (mm === 12 ? 1 : 0), mm - 1, dd);
-    const wd = d.getDay();
+    const dateText = (r.cells[1] && r.cells[1].textContent) ? r.cells[1].textContent.trim() : '';
+    if (!dateText) {
+      r._val = '-';
+      r._wd = null;
+      r._date = '';
+      return;
+    }
+
+    const parts = dateText.split('.');
+    const dd = Number(parts[0]);
+    const mm = Number(parts[1]);
+
+    // Jeżeli wykryjemy "zawiniecie" miesiąca (np. 12 -> 01) to inkrementujemy rok.
+    if (prevMonth !== null && mm < prevMonth) {
+      currentYear++;
+    }
+    prevMonth = mm;
+
+    // Obliczamy dzień tygodnia dla poprawnej detekcji poniedziałków
+    const d = new Date(currentYear, mm - 1, dd);
+    const wd = d.getDay(); // 0 = niedziela, 1 = poniedziałek...
+
+    // Wartość v (X / 1 / 2 / 3 / -)
     let v;
     if (r.classList.contains('table-secondary')) v = 'X';
     else {
-      const [cb1, cb2] = r.querySelectorAll('input[type=checkbox]');
+      const checkboxes = r.querySelectorAll('input[type=checkbox]');
+      const cb1 = checkboxes[0] || { checked: false };
+      const cb2 = checkboxes[1] || { checked: false };
       v = cb1.checked && cb2.checked ? '3' : cb1.checked ? '1' : cb2.checked ? '2' : '-';
     }
-    r._val = v; 
+
+    // Zapisujemy datę w formacie DD.MM (bez roku — czytelniej w deklaracji)
+    const ddStr = String(dd).padStart(2, '0');
+    const mmStr = String(mm).padStart(2, '0');
+    r._val = v;
     r._wd = wd;
-    r._date = `${dd.toString().padStart(2,'0')}.${mm.toString().padStart(2,'0')}`;
+    r._date = `${ddStr}.${mmStr}`;
   });
 
-  let html = '<table class="table table-bordered"><tbody>';
-  rows.filter(r => r._wd === 1).forEach(mon => {
+  // Budujemy tabelę tygodni zaczynając od poniedziałku na/ przed pierwszym dniem miesiąca
+  // UWAGA: wstawiamy style INLINE aby Word/klient pocztowy zachował je przy wklejeniu.
+  let html = '<table border="1" style="width:100%; border-collapse:collapse; table-layout:fixed;">';
+  html += '<tbody>';
+
+  // Znajdź weekday pierwszego wiersza (pierwszego dnia miesiąca w tabeli)
+  const firstWd = rows[0]._wd; // zakładamy, że parseMenu ustawił _wd dla wszystkich dni miesiąca
+  const daysBackToMon = (firstWd === 0) ? 6 : (firstWd - 1); // ile dni cofnąć, żeby trafić na poniedziałek
+  let startIdx = 0 - daysBackToMon; // może być ujemny (poniedziałek przed początkiem miesiąca)
+
+  while (startIdx <= rows.length - 1) {
     html += '<tr>';
-    const idx = rows.indexOf(mon);
-    for (let i = 0; i < 5; i++) {
-      const r = rows[idx + i];
-      if (!r || r._val === 'X') {
-        html += `<td style="text-align:center;">X</td>`;
+    for (let i = 0; i < 5; i++) { // Mon..Fri
+      const idx = startIdx + i;
+      // Jeśli idx poza zakresem => dzień nie należy do tego miesiąca -> zostawiamy pustą komórkę
+      if (idx < 0 || idx >= rows.length) {
+        html += `<td style="border:1px solid black; padding:6px;">&nbsp;</td>`;
+        continue;
+      }
+
+      const r = rows[idx];
+      // Jeśli wiersz jest z tego miesiąca — zawsze pokazujemy datę.
+      const dateText = r._date || '';
+
+      if (r._val === 'X') {
+        // Jeśli wartość to X — pokaż DATĘ i X pod spodem (zgodnie z prośbą)
+        html += `<td style="border:1px solid black; padding:6px; text-align:center;">
+                   <div>${dateText}</div><div style="font-weight:600;">X</div>
+                 </td>`;
       } else {
-        html += `<td><div>${r._date}</div><div>${r._val}</div></td>`;
+        // Normalny przypadek: pokazujemy datę i wartość (1/2/3/-)
+        html += `<td style="border:1px solid black; padding:6px; text-align:center;">
+                   <div>${dateText}</div><div>${r._val}</div>
+                 </td>`;
       }
     }
     html += '</tr>';
-  });
+    startIdx += 7; // skok do następnego poniedziałku
+  }
+
   html += '</tbody></table>';
   document.getElementById('declarationTableContainer').innerHTML = html;
-};
+
+  // (Opcjonalny) Debug: wyświetl policzone daty i wartości, jeśli włączone debugowanie
+  if (toggleDebugCheckbox.checked) {
+    const dbg = rows.map((r, i) => `${i + 1}. ${r._date} -> ${r._val} (wd=${r._wd})`).join('<br>');
+    debugBox.innerHTML = 'Daty i wartości:<br>' + dbg;
+    debugBox.classList.remove('d-none');
+  }
+}
+
+
 
 
 
@@ -485,6 +560,79 @@ function attachTooltipListeners() {
 
   if (debugEnabled && debugLog.length > 0) {
     debugBox.innerHTML += '<br><br><strong>⚠️ Dania bez definicji:</strong><br>' + debugLog.join('<br>');
+  }
+}
+
+function copyDeclarationTable() {
+  const table = document.querySelector('#declarationTableContainer table');
+  if (!table) {
+    alert('Brak tabeli do skopiowania');
+    return;
+  }
+
+  // Zawartość tabeli (ma już inline style z generateDeclaration)
+  const tableHtml = table.outerHTML;
+
+  // Przygotuj pełny HTML z meta i style które Word/klient pocztowy może wykorzystać
+  const htmlDocument = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          /* dodatkowe zabezpieczenia stylów - nie nadpisują inline, ale pomagają */
+          table { width:100%; border-collapse:collapse; table-layout:fixed; }
+          th, td { border:1px solid black; padding:6px; text-align:center; }
+        </style>
+      </head>
+      <body>
+        ${tableHtml}
+      </body>
+    </html>
+  `;
+
+  // Spróbuj zapisać do schowka jako HTML (nowoczesne przeglądarki)
+  if (navigator.clipboard && window.ClipboardItem) {
+    navigator.clipboard.write([
+      new ClipboardItem({
+        "text/html": new Blob([htmlDocument], { type: "text/html" }),
+        "text/plain": new Blob([table.innerText], { type: "text/plain" })
+      })
+    ]).then(() => {
+      alert("Tabela skopiowana jako HTML. Wklej do Worda/maila (Ctrl+V).");
+    }).catch(err => {
+      console.error("Clipboard write failed:", err);
+      fallbackCopy(htmlDocument);
+    });
+  } else {
+    // fallback dla starych przeglądarek
+    fallbackCopy(htmlDocument);
+  }
+
+  // Fallback: tworzy tymczasowy element, selekcjonuje i wykonuje execCommand('copy')
+  function fallbackCopy(html) {
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.innerHTML = html;
+    document.body.appendChild(container);
+
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    try {
+      document.execCommand('copy');
+      alert("Tabela skopiowana (fallback). Wklej do Worda/maila.");
+    } catch (err) {
+      console.error('Fallback copy failed', err);
+      alert("Nie udało się skopiować automatycznie. Zaznacz tabelę ręcznie i skopiuj (Ctrl+C).");
+    }
+
+    sel.removeAllRanges();
+    document.body.removeChild(container);
   }
 }
 
