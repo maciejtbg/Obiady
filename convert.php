@@ -6,8 +6,20 @@ if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
     $tmpFile = $_FILES['file']['tmp_name'];
     $filename = $_FILES['file']['name'];
 
-    // Ustaw swój klucz API z Cloudmersive (zarejestruj się i uzyskaj darmowy klucz)
-    $apiKey = 'ffdd008a-b3b4-4847-906c-e4fcfc1f63e7'; // <- Wstaw tutaj swój klucz API
+    // Klucz API Cloudmersive wczytywany ze zmiennej środowiskowej lub pliku config.php
+    // (zarejestruj się na cloudmersive.com i ustaw własny klucz w konfiguracji serwera)
+    $apiKey = getenv('CLOUDMERSIVE_API_KEY');
+    if (!$apiKey && file_exists(__DIR__ . '/config.php')) {
+        $config = include __DIR__ . '/config.php';
+        $apiKey = $config['cloudmersive_api_key'] ?? null;
+    }
+    if (!$apiKey) {
+        echo json_encode(array(
+            "Successful" => false,
+            "Error" => "Brak skonfigurowanego klucza API Cloudmersive. Ustaw zmienną środowiskową CLOUDMERSIVE_API_KEY lub plik config.php."
+        ));
+        exit;
+    }
 
     // Wykrycie rozszerzenia pliku
     $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
@@ -66,4 +78,3 @@ if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
         "Error" => "Plik nie został przesłany lub wystąpił błąd podczas przesyłania."
     ));
 }
-?>
