@@ -1,5 +1,5 @@
     // Lokalny słownik definicji – klucze zapisujemy w lowercase
-    const polishDefinitions = {
+    window.polishDefinitions = {
         // Pierwsze dania
         "zupa kalafiorowa zabielana": "Delikatna zupa na bazie kalafiora, zabielana śmietaną, o łagodnym smaku.",
         "krupnik z kaszy wiejskiej jęczmiennej z ziemniakami": "Sycący krupnik na bazie kaszy wiejskiej jęczmiennej, z dodatkiem ziemniaków, aromatycznie przyprawiony.",
@@ -69,7 +69,8 @@
   "zupa kalafiorowa z ziemniakami": "Delikatna zupa z różyczek kalafiora i ziemniaków, często zabielana śmietaną.",
   "zupa krupnik z kaszy jęczmiennej": "Treściwy krupnik na wywarze mięsnym z dodatkiem kaszy jęczmiennej i warzyw.",
   // ...następne definicje
-      };
+        "klops w sosie, ziemniaki, surówka": "Klops – potrawa z zapiekanej masy mięsa mielonego z dodatkami, do obróbki termicznej i do konsumpcji formowana w postaci walca."
+    };
 
 const keywordDefinitions = {
   // Zupy
@@ -91,6 +92,10 @@ const keywordDefinitions = {
   "krem": "Gęsta, aksamitna zupa warzywna (np. z białych warzyw).",
   "pieczarkowa": "Zupa grzybowa z pieczarek, często ze śmietaną.",
   "owocowa": "Zupa na bazie owoców, zwykle podawana na słodko.",
+  "owocow": "Danie lub deser na bazie owoców (mus, kompot, sałatka owocowa itp.).",
+  "jagod": "Zupa lub deser na bazie jagód.",
+  "cukini": "Zupa lub danie na bazie cukinii.",
+  "porowo": "Zupa na bazie pora i ziemniaków.",
   "zupa": "Ogólne hasło — gdy inne słowo nie zadziała, np. „zupa warzywna”",
 
   // Drugie dania
@@ -100,8 +105,10 @@ const keywordDefinitions = {
   "pożarski": "Kotlet mielony z drobiu, często panierowany.",
   "schab": "Mięso wieprzowe, zwykle panierowane lub smażone.",
   "pieczeń": "Mięso pieczone (zazwyczaj szynka), podawane z dodatkami.",
+  "pieczony": "Danie mięsne lub warzywne przygotowane w piekarniku.",
   "kurczak": "Mięso drobiowe w różnych wariacjach: panierowane, pieczone, w sosie.",
-  "gulasz": "Danie mięsne duszone w sosie z warzywami.",
+  "indyk": "Mięso z indyka, np. w sosie lub jako gulasz.",
+  "gulasz": "Danie mięsne lub roślinne duszone w sosie z warzywami.",
   "klopsiki": "Małe kuleczki z mięsa, duszone w sosie koperkowym.",
   "pulpety": "Podobne do klopsików — mięso mielone w sosie.",
   "burger": "Kanapka z kotletem (tu: drobiowym) i dodatkami.",
@@ -112,9 +119,17 @@ const keywordDefinitions = {
   "pampuchy": "Kluski gotowane na parze, często z sosem owocowym.",
   "tortilla": "Placek pszenny z nadzieniem: kurczak, warzywa, sos.",
   "ryba": "Filet rybny, zwykle w panierce, podawany z ziemniakami i surówką.",
+  "mintaj": "Ryba morska o delikatnym smaku, zwykle panierowana i smażona.",
   "paluszki": "Panierowane rybne lub mięsne paluszki, smażone na złoto.",
   "potrawka": "Danie z duszonego mięsa w sosie z warzywami.",
   "naleśniki": "Cienkie placki z nadzieniem: twaróg, dżem, mięso.",
   "twaróg": "Biały ser używany w pierogach, naleśnikach lub na słodko.",
-  "mozarella": "Miękki, włoski ser, zwykle dodawany do makaronów."
+  "mozarell": "Miękki, włoski ser, zwykle dodawany do makaronów.",
+  "galaretka": "Deser na bazie żelatyny, często z owocami.",
+  "soczewic": "Roślina strączkowa, składnik dań bezmięsnych (obiad roślinny).",
+  "ciecierzyc": "Roślina strączkowa (ciecierzyca/cieciorka), składnik dań bezmięsnych.",
+  "bulgur": "Kasza z pszenicy durum, składnik dań jarskich.",
+  "kuskus": "Drobna kasza z pszenicy, popularna jako dodatek do dań roślinnych.",
+  "curry": "Aromatyczna mieszanka przypraw, często w sosach do dań roślinnych lub mięsnych.",
+  "roślinn": "Danie w pełni bezmięsne (obiad roślinny)."
 };

@@ -4,641 +4,488 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Parser menu z DOC</title>
-  <!-- Bootstrap CSS -->
+  <title>Generator deklaracji obiadowej z Katolika</title>
+    <!-- Favicons -->
+  <link rel="icon" href="https://katolik.info.pl/wp-content/uploads/2021/03/fav16.gif" type="image/gif" sizes="16x16">
+  <link rel="icon" href="https://katolik.info.pl/wp-content/uploads/2021/03/fav32.gif" type="image/gif" sizes="32x32">
+  
+  <script>console.log('🟢 HTML HEAD - start ładowania');</script>
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Tippy.js CSS -->
+  <script>console.log('✅ Bootstrap CSS załadowany');</script>
+  
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
-  <style>
-    /* Zachowujemy tylko niezbędne niestandardowe style */
-    .dish-name {
-      cursor: help;
-      position: relative;
-    }
-  </style>
+  <script>console.log('✅ Tippy CSS załadowany');</script>
+  
+  <link rel="stylesheet" href="styles.css">
+  <script>console.log('✅ styles.css załadowany (lub próba załadowania)');</script>
 </head>
 
-<body class="bg-light text-dark">
-  <div class="container mt-4">
-    <h2 class="text-center">Wczytaj menu z DOC</h2>
+<body>
+  <script>console.log('🟢 BODY - start renderowania');</script>
+  <!-- <script>
+    // =======================================================
+// [START] BLOKADA UNDER CONSTRUCTION (Wymaga zmiany hasła!)
+// =======================================================
 
-    <!-- Przełączniki -->
-    <div class="form-check form-switch my-3">
-      <input class="form-check-input" type="checkbox" id="toggleTextarea">
-      <label class="form-check-label" for="toggleTextarea">Pokaż pole tekstowe i przycisk Konwertuj</label>
-    </div>
-    <div class="form-check form-switch my-3">
-      <input class="form-check-input" type="checkbox" id="toggleDebug">
-      <label class="form-check-label" for="toggleDebug">Włącz debugowanie</label>
-    </div>
-    <div class="form-check form-switch my-3">
-      <input class="form-check-input" type="checkbox" id="themeToggle">
-      <label class="form-check-label" for="themeToggle">Ciemny motyw</label>
-    </div>
+const HASLO_DOSTEP = "1234"; // ZMIEN TO NA SWOJE HASŁO!
+const KLUCZ_SESJI = 'access_granted_menu';
 
-    <!-- Powiadomienia i formularze -->
-    <div id="debugBox" class="alert alert-info d-none">Debugowanie aktywne</div>
-    <input type="file" id="fileInput" class="form-control my-3" accept=".doc">
-    <button id="convertBtn" class="btn btn-primary my-3 d-none">KONWERTUJ</button>
-    <div id="loadingSpinner" class="text-center my-3 d-none">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-      <p>Przetwarzanie pliku, proszę czekać...</p>
-    </div>
-    <textarea id="convertedText" class="form-control my-3 d-none" rows="10"
-      placeholder="Tutaj pojawi się przekonwertowany tekst"></textarea>
-    <button id="generateMenuBtn" class="btn btn-success my-3">GENERUJ MENU</button>
-    <div id="warningBox" class="alert alert-warning d-none">Zawartość pliku nie jest zgodna z oczekiwaniami!</div>
+// 1. Sprawdź, czy dostęp został już udzielony w sesji.
+if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
+  
+  // 2. Jeśli nie, natychmiast ukryj całą zawartość strony (body).
+  document.documentElement.style.visibility = 'hidden'; 
+  
+  // 3. Stwórz prosty, centralny modal blokujący.
+  const overlay = document.createElement('div');
+  overlay.id = 'construction-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #2c3e50; /* Ciemny tło */
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    opacity: 0; /* Zacznij od 0 */
+    transition: opacity 0.5s ease;
+  `;
+  
+  overlay.innerHTML = `
+    <h1 style="border: 2px solid #3498db; padding: 10px 20px; display: inline-block; margin-bottom: 20px;">
+      🛠️ STRONA W BUDOWIE
+    </h1>
+    <p style="font-size: 1.2em; margin-bottom: 30px;">
+      Generator deklaracji jest aktualizowany. Proszę podać hasło, aby kontynuować.
+    </p>
+    <input type="password" id="access-password" placeholder="Wpisz hasło" style="
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 2px solid #3498db;
+      border-radius: 5px;
+      width: 250px;
+      text-align: center;
+      font-size: 1em;
+      color: #333;
+    ">
+    <button id="access-btn" style="
+      padding: 10px 30px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: background-color 0.3s;
+    ">
+      Dalej
+    </button>
+    <p id="error-message" style="color: #e74c3c; margin-top: 20px;"></p>
+  `;
+  
+  document.body.appendChild(overlay);
 
-    <!-- Tabela menu -->
-    <table id="menuTable" class="table table-hover">
-      <thead>
-        <tr>
-          <th>Lp.</th>
-          <th>Dzień miesiąca</th>
-          <th>Dzień tygodnia</th>
-          <th>Pierwsze danie</th>
-          <th>Wybór</th>
-          <th>Drugie danie</th>
-          <th>Wybór</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-      <tfoot>
-        <tr>
-          <td colspan="7" class="text-center">
-            <div id="summaryBox" class="d-flex flex-wrap justify-content-between p-2 border mt-2">
-              <div class="col-6 mb-2">
-                <h5>Podsumowanie Pierwszych Dań</h5>
-                <p>Ilość zaznaczonych pierwszych dań: <span id="selectedFirstCoursesCount">0</span></p>
-                <p>Koszt pierwszego dania:
-                  <input type="number" id="firstCoursePrice" value="7.50" min="0" step="0.01"> PLN
-                </p>
-                <p>Całkowity koszt pierwszych dań: <span id="totalFirstCoursesCost">0.00</span> PLN</p>
-              </div>
-              <div class="col-6 mb-2">
-                <h5>Podsumowanie Drugich Dań</h5>
-                <p>Ilość zaznaczonych drugich dań: <span id="selectedSecondCoursesCount">0</span></p>
-                <p>Koszt drugiego dania:
-                  <input type="number" id="secondCoursePrice" value="15.50" min="0" step="0.01"> PLN
-                </p>
-                <p>Całkowity koszt drugich dań: <span id="totalSecondCoursesCost">0.00</span> PLN</p>
-              </div>
-            </div>
-            <div id="totalCostAllMealsContainer" class="alert alert-info mt-3 d-none">
-              <h4>Całkowity koszt obiadów w miesiącu <span id="summaryMonth"></span>:
-                <span id="totalCostAllMeals">0.00</span> PLN
-              </h4>
-            </div>
-          </td>
-        </tr>
-      </tfoot>
-    </table>
-    <button id="generateDeclarationBtn" class="btn btn-warning my-3">GENERUJ DEKLARACJĘ</button>
-    <div id="declarationTableContainer" class="mt-4"></div>
-    <button class="btn btn-light my-3" onclick="copyDeclarationTable()">Kopiuj tabelę</button>
+  // 4. Po wstawieniu elementu, ustaw jego widoczność.
+  setTimeout(() => {
+    document.documentElement.style.visibility = 'visible'; // Uwidocznij, aby CSS mogło działać
+    overlay.style.opacity = 1;
+  }, 10);
+  
+  // 5. Logika sprawdzania hasła
+  const passwordInput = document.getElementById('access-password');
+  const accessButton = document.getElementById('access-btn');
+  const errorMessage = document.getElementById('error-message');
 
+  const checkPassword = () => {
+    if (passwordInput.value.trim() === HASLO_DOSTEP) {
+      sessionStorage.setItem(KLUCZ_SESJI, 'true');
+      overlay.style.opacity = 0;
+      setTimeout(() => {
+        overlay.remove(); // Usuń nakładkę
+      }, 500);
+    } else {
+      errorMessage.textContent = '❌ Nieprawidłowe hasło.';
+      passwordInput.value = '';
+    }
+  };
+
+  accessButton.addEventListener('click', checkPassword);
+  passwordInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') checkPassword();
+  });
+  
+  // Ostatni krok: Zatrzymaj dalsze wykonywanie skryptu
+  // W ten sposób cały reszta kodu (część 1, 2, 3...) nie zostanie uruchomiona,
+  // dopóki użytkownik nie poda hasła (lub nie odświeży strony z poprawną sesją).
+  throw new Error("Strona zablokowana przez under construction overlay.");
+}
+
+// =======================================================
+// [END] BLOKADA UNDER CONSTRUCTION
+// =======================================================
+    </script> -->
+  <!-- Debug banner -->
+  <div id="debugBanner" style="background: #007bff; color: white; padding: 10px; text-align: center; font-weight: bold;">
+    🔍 Strona się ładuje... Sprawdź konsolę (F12)
   </div>
 
-  <!-- Skrypty -->
-  <!-- Bootstrap JS (zawiera Popper) -->
+  <!-- NAVBAR z logo i przyciskami -->
+  <nav class="navbar navbar-dark mb-4" style="position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <div class="container-fluid">
+      <!-- Logo i tytuł po lewej -->
+      <div class="d-flex align-items-center">
+        <img src="logo.png" alt="Logo Katolika" style="height: 40px; margin-right: 15px;" onerror="this.style.display='none'">
+        <span class="navbar-brand mb-0 h1" style="margin: 0;">Generator deklaracji obiadowej z Katolika</span>
+      </div>
+      
+      <!-- Przyciski po prawej (zawsze razem) -->
+      <div class="d-flex align-items-center gap-2">
+        <button class="theme-toggle" id="devMenuToggle" title="Narzędzia deweloperskie" style="background: transparent; border: none; color: white; font-size: 24px; cursor: pointer; padding: 5px 10px; margin: 0;">
+          ⚙️
+        </button>
+        <button class="theme-toggle" id="themeToggleBtn" title="Zmień motyw" style="margin: 0;">
+          <span id="themeIcon">☀️</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <script>console.log('✅ Navbar renderowany');</script>
+
+  <!-- Menu deweloperskie (wysuwane po kliknięciu ⚙️) -->
+  <div class="dev-menu d-none" id="devMenu">
+    <h6 class="mb-3">🛠️ Narzędzia Deweloperskie</h6>
+    <div class="form-check form-switch mb-2">
+      <input class="form-check-input" type="checkbox" id="toggleTextarea">
+      <label class="form-check-label" for="toggleTextarea">Pole tekstowe</label>
+    </div>
+    <div class="form-check form-switch mb-2">
+      <input class="form-check-input" type="checkbox" id="toggleDebug">
+      <label class="form-check-label" for="toggleDebug">Debugowanie</label>
+    </div>
+  </div>
+
+  <script>console.log('✅ Dev menu renderowane');</script>
+
+  <div class="container mt-4">
+    
+    <!-- KROK 1: Wczytanie menu -->
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">📋 Krok 1: Wczytaj plik menu</h5>
+        <input type="file" id="fileInput" class="form-control mb-3" accept=".doc,.docx">
+        <button id="convertBtn" class="btn btn-primary d-none">Konwertuj</button>
+        <div id="loadingSpinner" class="text-center my-3 d-none">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p>Przetwarzanie pliku, proszę czekać...</p>
+        </div>
+        <textarea id="convertedText" class="form-control my-3 d-none" rows="6"
+          placeholder="Tutaj pojawi się przekonwertowany tekst"></textarea>
+        <button id="generateMenuBtn" class="btn btn-success my-3">Generuj Menu</button>
+      </div>
+    </div>
+
+    <script>console.log('✅ Krok 1 - formularz wczytywania');</script>
+
+    <div id="historySection" class="card d-none">
+      <div class="card-body">
+        <h5 class="card-title">📋 Ostatnio wczytane</h5>
+        <div id="historyList" class="history-list"></div>
+        <button class="expand-btn d-none" id="expandHistoryBtn">Pokaż więcej...</button>
+      </div>
+    </div>
+
+    <div id="debugBox" class="alert alert-info d-none mt-3"></div>
+    <div id="warningBox" class="alert alert-warning d-none">Zawartość pliku nie jest zgodna z oczekiwaniami!</div>
+
+    <!-- KROK 2: Wybór obiadów -->
+<!-- KROK 2: Wybór obiadów -->
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">🍽️ Krok 2: Wybierz obiady</h5>
+    
+
+    
+    <div class="table-responsive">
+          <table id="menuTable" class="table table-hover">
+<thead>
+  <!-- Wiersz z przyciskami zbiorczymi (tylko mobile) -->
+  <tr class="mobile-select-row">
+    <th></th>
+    <th></th>
+    <th></th>
+
+    <th style="padding: 8px 4px;">
+      <button class="mobile-toggle-btn" data-column="first" onclick="toggleMobileColumn('first')">
+        <span class="btn-icon">●</span>
+        <span class="btn-label">Zupy</span>
+      </button>
+    </th>
+    <th></th>
+    <th style="padding: 8px 4px;">
+      <button class="mobile-toggle-btn" data-column="second" onclick="toggleMobileColumn('second')">
+        <span class="btn-icon">●</span>
+        <span class="btn-label">Drugie</span>
+      </button>
+    </th>
+    <th></th>
+  </tr>
+  
+  <tr>
+    <th>Lp.</th>
+    <th>Data</th>
+    <th>Dzień</th>
+    <th>Pierwsze danie</th>
+    <th style="text-align: center;">
+      <div style="font-size: 0.85em; margin-bottom: 5px;">Wybór</div>
+      <input type="checkbox" id="selectAllFirst" class="form-check-input" title="Zaznacz/odznacz wszystkie">
+    </th>
+    <th>Drugie danie</th>
+    <th style="text-align: center;">
+      <div style="font-size: 0.85em; margin-bottom: 5px;">Wybór</div>
+      <input type="checkbox" id="selectAllSecond" class="form-check-input" title="Zaznacz/odznacz wszystkie">
+    </th>
+  </tr>
+</thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>console.log('✅ Krok 2 - tabela menu');</script>
+
+    <div id="summaryBox" class="d-none">
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <h6>Tylko zupa</h6>
+          <p>Zaznaczone: <strong><span id="selectedFirstCoursesCount">0</span></strong></p>
+          <p>Cena: <input type="number" id="firstCoursePrice" value="8.50" min="0" step="0.01" class="form-control form-control-sm d-inline-block" style="width: 100px;"> PLN</p>
+          <p>Suma: <strong><span id="totalFirstCoursesCost">0.00</span> PLN</strong></p>
+        </div>
+        <div class="col-md-4 mb-3">
+          <h6>Tylko drugie danie</h6>
+          <p>Zaznaczone: <strong><span id="selectedSecondCoursesCount">0</span></strong></p>
+          <p>Cena: <input type="number" id="secondCoursePrice" value="18.00" min="0" step="0.01" class="form-control form-control-sm d-inline-block" style="width: 100px;"> PLN</p>
+          <p>Suma: <strong><span id="totalSecondCoursesCost">0.00</span> PLN</strong></p>
+        </div>
+        <div class="col-md-4 mb-3">
+          <h6>Zestaw (zupa + drugie danie)</h6>
+          <p class="text-muted mb-1"><small>Cena zestawu obowiązuje automatycznie dla dni, w których zaznaczono oba dania.</small></p>
+          <p>Cena: <input type="number" id="comboPrice" value="23.50" min="0" step="0.01" class="form-control form-control-sm d-inline-block" style="width: 100px;"> PLN</p>
+          <p><small id="comboSelectedInfo" class="text-muted"></small></p>
+        </div>
+      </div>
+      <div class="alert alert-info mt-3">
+        <h5>Całkowity koszt obiadów (<span id="summaryMonth"></span>): <strong><span id="totalCostAllMeals">0.00</span> PLN</strong></h5>
+      </div>
+    </div>
+
+    <!-- KROK 3: Generowanie tabeli -->
+    <button id="generateDeclarationBtn" class="btn btn-warning my-3">
+      📊 Krok 3: Generuj tabelę do deklaracji
+    </button>
+
+    <div id="declarationTableContainer" class="mt-4"></div>
+
+    <script>console.log('✅ Krok 3 - generowanie tabeli');</script>
+
+    <!-- KROK 4: Wybór formatu -->
+<div id="declarationActions" class="d-none my-3">
+  <h5 class="mb-3">📤 Jak chcesz wysłać deklarację?</h5>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-secondary" onclick="copyDeclarationTable()">
+      📋 Kopiuj tabelę
+    </button>
+    <button class="btn btn-primary" onclick="showEmailForm()">
+      📧 Wyślij e-mailem
+    </button>
+    <button class="btn btn-success" onclick="showPDFForm()">
+      📄 Generuj PDF
+    </button>
+  </div>
+</div>
+
+    <script>console.log('✅ Krok 4 - przyciski akcji');</script>
+  
+    <!-- WSPÓLNY FORMULARZ dla EMAIL i PDF -->
+<!-- SEKCJA EMAIL -->
+<div id="emailFormSection" class="card d-none my-3">
+  <div class="card-body">
+    <h5>📧 Wyślij e-mailem</h5>
+    
+    <div class="mb-3">
+      <label for="emailTo" class="form-label">E-mail odbiorcy:</label>
+      <input type="email" class="form-control" id="emailTo" value="agnieszkakupczyk@katolik.info.pl">
+    </div>
+    
+    <div class="mb-3">
+      <label for="childName" class="form-label">Imię i nazwisko dziecka:</label>
+      <input type="text" class="form-control" id="childName" placeholder="np. Jan Kowalski">
+      <small class="text-muted">Opcjonalne</small>
+    </div>
+    
+    <div class="mb-3">
+      <label for="childClass" class="form-label">Klasa:</label>
+      <input type="text" class="form-control" id="childClass" placeholder="np. 3a">
+      <small class="text-muted">Opcjonalne</small>
+    </div>
+    
+    <div class="mb-3">
+      <label for="healthNotes" class="form-label">Zalecenia zdrowotne:</label>
+      <input type="text" class="form-control" id="healthNotes" value="brak">
+    </div>
+    
+    <h6 class="mt-4">Wybierz program pocztowy:</h6>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-danger" onclick="sendViaGmail()">
+        📧 Gmail
+      </button>
+      <button class="btn btn-info" onclick="sendViaOutlook()">
+        📨 Outlook Web
+      </button>
+      <button class="btn btn-success" onclick="sendViaLocalClient()">
+        💻 Program lokalny
+      </button>
+    </div>
+    
+    <button class="btn btn-secondary mt-3" onclick="hideEmailForm()">
+      Anuluj
+    </button>
+  </div>
+</div>
+
+<!-- SEKCJA PDF -->
+<div id="pdfFormSection" class="card d-none my-3">
+  <div class="card-body">
+    <h5>📄 Generuj PDF</h5>
+    
+    <div class="mb-3">
+      <label for="childNamePDF" class="form-label">Imię i nazwisko dziecka:</label>
+      <input type="text" class="form-control" id="childNamePDF" placeholder="np. Jan Kowalski">
+      <small class="text-muted">Opcjonalne</small>
+    </div>
+    
+    <div class="mb-3">
+      <label for="childClassPDF" class="form-label">Klasa:</label>
+      <input type="text" class="form-control" id="childClassPDF" placeholder="np. 3a">
+      <small class="text-muted">Opcjonalne</small>
+    </div>
+    
+    <div class="mb-3">
+      <label for="healthNotesPDF" class="form-label">Zalecenia zdrowotne:</label>
+      <input type="text" class="form-control" id="healthNotesPDF" value="brak">
+    </div>
+    
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-success" onclick="generatePDFWithoutSignature()">
+        📄 Generuj PDF bez podpisu
+      </button>
+      <button class="btn btn-primary" onclick="toggleSignatureSection()">
+        ✏️ Dodaj podpis i generuj
+      </button>
+    </div>
+    
+    <!-- Sekcja podpisu (ukryta domyślnie) -->
+    <div id="signatureSection" class="d-none mt-4">
+      <hr>
+      <h6>✏️ Złóż podpis</h6>
+      <p class="text-muted">Podpisz się w polu poniżej używając myszy lub ekranu dotykowego</p>
+      
+      <canvas id="signatureCanvas" width="600" height="200" style="border: 2px solid #ddd; border-radius: 5px; cursor: crosshair; display: block; margin: 20px auto; background: white;"></canvas>
+      
+      <div class="signature-tools text-center mb-3">
+        <button class="btn btn-sm btn-danger" onclick="clearSignature()">🗑️ Wyczyść</button>
+        <button class="btn btn-sm btn-dark" onclick="changeSignatureColor('#000000')">Czarny</button>
+        <button class="btn btn-sm btn-primary" onclick="changeSignatureColor('#0000ff')">Niebieski</button>
+        <button class="btn btn-sm btn-secondary" onclick="changeSignatureThickness(2)">Cienka linia</button>
+        <button class="btn btn-sm btn-secondary" onclick="changeSignatureThickness(5)">Gruba linia</button>
+      </div>
+      
+      <button class="btn btn-success w-100" onclick="generatePDFWithSignature()">
+        📄 Generuj PDF z podpisem
+      </button>
+    </div>
+    
+    <button class="btn btn-secondary mt-3" onclick="hidePDFForm()">
+      Anuluj
+    </button>
+  </div>
+</div>
+    <script>console.log('✅ Formularz deklaracji renderowany');</script>
+
+  </div> <!-- Zamknięcie container -->
+
+  <script>console.log('✅ Container zamknięty - koniec HTML');</script>
+
+  <!-- WSZYSTKIE SKRYPTY NA KOŃCU -->
+  <script>console.log('🔵 Start ładowania skryptów JavaScript');</script>
+  
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Popper.js i Tippy.js -->
+  <script>console.log('✅ Bootstrap JS załadowany');</script>
+  
   <script src="https://unpkg.com/@popperjs/core@2"></script>
+  <script>console.log('✅ Popper.js załadowany');</script>
+  
   <script src="https://unpkg.com/tippy.js@6"></script>
-    <script src="definitions.js"></script>
+  <script>console.log('✅ Tippy.js załadowany');</script>
+  
+  <!-- Biblioteki PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>console.log('✅ jsPDF załadowany');</script>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>console.log('✅ html2canvas załadowany');</script>
+  
+  <!-- WAŻNE: Kolejność ma znaczenie! -->
+  <script>
+    console.log('🔵 Ładowanie plików lokalnych...');
+    console.log('📂 Próba załadowania definitions.js');
+  </script>
+  <script src="definitions.js" onerror="console.error('❌ BŁĄD: definitions.js nie załadował się!')"></script>
+  <script>console.log('✅ definitions.js załadowany (lub próba)');</script>
+  
+  <script>console.log('📂 Próba załadowania fonts.js');</script>
+  <script src="fonts.js" onerror="console.error('❌ BŁĄD: fonts.js nie załadował się!')"></script>
+  <script>console.log('✅ fonts.js załadowany (lub próba)');</script>
+  
+  <script>console.log('📂 Próba załadowania script.js');</script>
+  <script src="script.js" onerror="console.error('❌ BŁĄD: script.js nie załadował się!')"></script>
+  <script>console.log('✅ script.js załadowany (lub próba)');</script>
 
   <script>
-    // Elementy interfejsu
-    const toggleTextareaCheckbox = document.getElementById('toggleTextarea');
-    const convertedTextarea = document.getElementById('convertedText');
-    const convertButton = document.getElementById('convertBtn');
-    const toggleDebugCheckbox = document.getElementById('toggleDebug');
-    const debugBox = document.getElementById('debugBox');
-    const summaryBox = document.getElementById('summaryBox');
-    const totalCostAllMealsContainer = document.getElementById('totalCostAllMealsContainer');
-    const generateMenuBtn = document.getElementById('generateMenuBtn');
-    const fileInput = document.getElementById('fileInput');
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    const themeToggle = document.getElementById('themeToggle');
-    const generateDeclarationBtn = document.getElementById('generateDeclarationBtn');
-generateDeclarationBtn.addEventListener('click', generateDeclaration);
-
-
-
-function generateDeclaration() {
-  const rows = [...document.querySelectorAll('#menuTable tbody tr')];
-  if (rows.length === 0) {
-    document.getElementById('declarationTableContainer').innerHTML = '<p>Brak danych w tabeli.</p>';
-    return;
-  }
-
-  // Ustalamy rok na podstawie sekwencji — tylko do wyliczania dni tygodnia, jeśli potrzebne.
-  let currentYear = new Date().getFullYear();
-  let prevMonth = null;
-
-  // Przypiszemy meta pola (_val, _wd, _date) do każdego wiersza.
-  rows.forEach(r => {
-    const dateText = (r.cells[1] && r.cells[1].textContent) ? r.cells[1].textContent.trim() : '';
-    if (!dateText) {
-      r._val = '-';
-      r._wd = null;
-      r._date = '';
-      return;
-    }
-
-    const parts = dateText.split('.');
-    const dd = Number(parts[0]);
-    const mm = Number(parts[1]);
-
-    // Jeżeli wykryjemy "zawiniecie" miesiąca (np. 12 -> 01) to inkrementujemy rok.
-    if (prevMonth !== null && mm < prevMonth) {
-      currentYear++;
-    }
-    prevMonth = mm;
-
-    // Obliczamy dzień tygodnia dla poprawnej detekcji poniedziałków
-    const d = new Date(currentYear, mm - 1, dd);
-    const wd = d.getDay(); // 0 = niedziela, 1 = poniedziałek...
-
-    // Wartość v (X / 1 / 2 / 3 / -)
-    let v;
-    if (r.classList.contains('table-secondary')) v = 'X';
-    else {
-      const checkboxes = r.querySelectorAll('input[type=checkbox]');
-      const cb1 = checkboxes[0] || { checked: false };
-      const cb2 = checkboxes[1] || { checked: false };
-      v = cb1.checked && cb2.checked ? '3' : cb1.checked ? '1' : cb2.checked ? '2' : '-';
-    }
-
-    // Zapisujemy datę w formacie DD.MM (bez roku — czytelniej w deklaracji)
-    const ddStr = String(dd).padStart(2, '0');
-    const mmStr = String(mm).padStart(2, '0');
-    r._val = v;
-    r._wd = wd;
-    r._date = `${ddStr}.${mmStr}`;
-  });
-
-  // Budujemy tabelę tygodni zaczynając od poniedziałku na/ przed pierwszym dniem miesiąca
-  // UWAGA: wstawiamy style INLINE aby Word/klient pocztowy zachował je przy wklejeniu.
-  let html = '<table border="1" style="width:100%; border-collapse:collapse; table-layout:fixed;">';
-  html += '<tbody>';
-
-  // Znajdź weekday pierwszego wiersza (pierwszego dnia miesiąca w tabeli)
-  const firstWd = rows[0]._wd; // zakładamy, że parseMenu ustawił _wd dla wszystkich dni miesiąca
-  const daysBackToMon = (firstWd === 0) ? 6 : (firstWd - 1); // ile dni cofnąć, żeby trafić na poniedziałek
-  let startIdx = 0 - daysBackToMon; // może być ujemny (poniedziałek przed początkiem miesiąca)
-
-  while (startIdx <= rows.length - 1) {
-    html += '<tr>';
-    for (let i = 0; i < 5; i++) { // Mon..Fri
-      const idx = startIdx + i;
-      // Jeśli idx poza zakresem => dzień nie należy do tego miesiąca -> zostawiamy pustą komórkę
-      if (idx < 0 || idx >= rows.length) {
-        html += `<td style="border:1px solid black; padding:6px;">&nbsp;</td>`;
-        continue;
+    console.log('🎉 KONIEC - wszystkie skrypty załadowane');
+    console.log('📋 Podsumowanie:');
+    console.log('  - Bootstrap:', typeof bootstrap !== 'undefined' ? '✅' : '❌');
+    console.log('  - jsPDF:', typeof window.jspdf !== 'undefined' ? '✅' : '❌');
+    console.log('  - html2canvas:', typeof html2canvas !== 'undefined' ? '✅' : '❌');
+    console.log('  - keywordDefinitions:', typeof keywordDefinitions !== 'undefined' ? '✅' : '❌');
+    console.log('  - registerTinosFonts:', typeof registerTinosFonts !== 'undefined' ? '✅' : '❌');
+    console.log('  - createPDFDocument:', typeof createPDFDocument !== 'undefined' ? '✅' : '❌');
+    
+    // Usuń debug banner po załadowaniu
+    setTimeout(function() {
+      const banner = document.getElementById('debugBanner');
+      if (banner) {
+        banner.style.background = '#28a745';
+        banner.textContent = '✅ Strona załadowana pomyślnie!';
+        setTimeout(function() {
+          banner.style.display = 'none';
+        }, 3000);
       }
-
-      const r = rows[idx];
-      // Jeśli wiersz jest z tego miesiąca — zawsze pokazujemy datę.
-      const dateText = r._date || '';
-
-      if (r._val === 'X') {
-        // Jeśli wartość to X — pokaż DATĘ i X pod spodem (zgodnie z prośbą)
-        html += `<td style="border:1px solid black; padding:6px; text-align:center;">
-                   <div>${dateText}</div><div style="font-weight:600;">X</div>
-                 </td>`;
-      } else {
-        // Normalny przypadek: pokazujemy datę i wartość (1/2/3/-)
-        html += `<td style="border:1px solid black; padding:6px; text-align:center;">
-                   <div>${dateText}</div><div>${r._val}</div>
-                 </td>`;
-      }
-    }
-    html += '</tr>';
-    startIdx += 7; // skok do następnego poniedziałku
-  }
-
-  html += '</tbody></table>';
-  document.getElementById('declarationTableContainer').innerHTML = html;
-
-  // (Opcjonalny) Debug: wyświetl policzone daty i wartości, jeśli włączone debugowanie
-  if (toggleDebugCheckbox.checked) {
-    const dbg = rows.map((r, i) => `${i + 1}. ${r._date} -> ${r._val} (wd=${r._wd})`).join('<br>');
-    debugBox.innerHTML = 'Daty i wartości:<br>' + dbg;
-    debugBox.classList.remove('d-none');
-  }
-}
-
-
-
-
-
-
-    // Obsługa widoczności pola tekstowego i przycisku
-    toggleTextareaCheckbox.addEventListener('change', function () {
-      convertedTextarea.classList.toggle('d-none', !this.checked);
-      convertButton.classList.toggle('d-none', !this.checked);
-    });
-
-    // Obsługa debugowania
-    toggleDebugCheckbox.addEventListener('change', function () {
-      debugBox.classList.toggle('d-none', !this.checked);
-    });
-
-    // Obsługa motywu z wykorzystaniem Bootstrap
-    function applyTheme(theme) {
-      const body = document.body;
-      const menuTable = document.getElementById('menuTable');
-      const summaryBox = document.getElementById('summaryBox');
-      const totalCostContainer = document.getElementById('totalCostAllMealsContainer');
-
-      if (theme === 'dark') {
-        // Dla body
-        body.classList.replace('bg-light', 'bg-dark');
-        body.classList.replace('text-dark', 'text-light');
-
-        // Dla tabeli – dodajemy klasę table-dark (domyślny wygląd to brak tej klasy)
-        menuTable.classList.add('table-dark');
-
-        // Dla sekcji podsumowania
-        summaryBox.classList.replace('bg-light', 'bg-dark');
-        summaryBox.classList.replace('text-dark', 'text-light');
-        totalCostContainer.classList.replace('bg-light', 'bg-dark');
-        totalCostContainer.classList.replace('text-dark', 'text-light');
-
-        themeToggle.checked = true;
-      } else {
-        // Przywracamy styl jasny dla body
-        body.classList.replace('bg-dark', 'bg-light');
-        body.classList.replace('text-light', 'text-dark');
-
-        // Usuwamy klasę table-dark – tabela przyjmuje domyślny jasny styl
-        menuTable.classList.remove('table-dark');
-
-        // Przywracamy jasny styl dla sekcji podsumowania
-        summaryBox.classList.replace('bg-dark', 'bg-light');
-        summaryBox.classList.replace('text-light', 'text-dark');
-        totalCostContainer.classList.replace('bg-dark', 'bg-light');
-        totalCostContainer.classList.replace('text-light', 'text-dark');
-
-        themeToggle.checked = false;
-      }
-    }
-
-    themeToggle.addEventListener('change', () => {
-      const theme = themeToggle.checked ? 'dark' : 'light';
-      applyTheme(theme);
-      localStorage.setItem('theme', theme);
-    });
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    applyTheme(savedTheme);
-
-    // Konwersja i generowanie menu
-    convertButton.addEventListener('click', convertFileAndGenerateMenu);
-    generateMenuBtn.addEventListener('click', () => {
-      if (!toggleTextareaCheckbox.checked) {
-        convertFileAndGenerateMenu();
-      } else {
-        const text = convertedTextarea.value;
-        if (!text) {
-          if (toggleDebugCheckbox.checked) {
-            debugBox.textContent = "Brak przekonwertowanego tekstu do przetworzenia.";
-          }
-          return;
-        }
-        loadingSpinner.classList.remove('d-none');
-        setTimeout(() => {
-          parseMenu(text);
-          loadingSpinner.classList.add('d-none');
-        }, 100);
-      }
-    });
-
-    function convertFileAndGenerateMenu() {
-      const file = fileInput.files[0];
-      if (!file) {
-        if (toggleDebugCheckbox.checked) {
-          debugBox.textContent = "Nie wybrano pliku do przesłania.";
-        }
-        return;
-      }
-      const formData = new FormData();
-      formData.append('file', file);
-      loadingSpinner.classList.remove('d-none');
-      fetch('convert.php', {
-        method: 'POST',
-        body: formData
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.Successful) {
-            convertedTextarea.value = data.TextResult;
-            if (toggleDebugCheckbox.checked) {
-              debugBox.textContent = "Plik został pomyślnie przekonwertowany.";
-            }
-            parseMenu(data.TextResult);
-          } else {
-            if (toggleDebugCheckbox.checked) {
-              debugBox.textContent = `Błąd konwersji: ${data.Error}`;
-            }
-            document.getElementById('warningBox').classList.remove('d-none');
-          }
-        })
-        .catch(error => {
-          if (toggleDebugCheckbox.checked) {
-            debugBox.textContent = `Błąd podczas przesyłania pliku: ${error.message}`;
-          }
-          document.getElementById('warningBox').classList.remove('d-none');
-        })
-        .finally(() => {
-          loadingSpinner.classList.add('d-none');
-        });
-    }
-
-
-function parseMenu(jsonTekst) {
-  try {
-    const debugEnabled = toggleDebugCheckbox.checked;
-    const debugLog = [];
-
-    const dane = JSON.parse(jsonTekst);
-    if (!dane || !dane.Successful || !dane.TextResult) {
-      document.getElementById('warningBox').classList.remove('d-none');
-      return;
-    }
-
-    const tekstMenu = dane.TextResult;
-    const linie = tekstMenu.split('\n').filter(linia => linia.trim() !== '');
-    const menuTableBody = document.querySelector('#menuTable tbody');
-    menuTableBody.innerHTML = '';
-    let lp = 1;
-    const parsedDates = {};
-    let monthName = '';
-    let monthNumber = 0;
-
-    for (let linia of linie) {
-      linia = linia.trim();
-
-const dateMatch = linia.match(/([A-ZŁŚĆŹŻĘÓŃ]+\s+)?(\d{1,2})\.(\d{2})/i);
-if (dateMatch) {
-  const day = dateMatch[2].padStart(2, '0');  // dzień
-  const month = dateMatch[3].padStart(2, '0'); // miesiąc
-  const dateKey = `${day}.${month}`;
-  monthNumber = parseInt(month, 10);
-  monthName = getMonthName(monthNumber);
-  parsedDates[dateKey] = { pierwszeDanie: null, drugieDanie: null };
-
-  if (debugEnabled) debugLog.push(`🔎 Rozpoznano datę: ${dateKey} (${linia})`);
-  continue;
-}
-
-
-      const lastKey = Object.keys(parsedDates).pop();
-      if (lastKey && parsedDates[lastKey].pierwszeDanie === null) {
-        parsedDates[lastKey].pierwszeDanie = linia;
-        if (debugEnabled) debugLog.push(`🍲 Pierwsze danie dla ${lastKey}: ${linia}`);
-        continue;
-      }
-
-      if (lastKey && parsedDates[lastKey].drugieDanie === null) {
-        parsedDates[lastKey].drugieDanie = linia;
-        if (debugEnabled) debugLog.push(`🥘 Drugie danie dla ${lastKey}: ${linia}`);
-        continue;
-      }
-    }
-
-    const today = new Date();
-    const year = today.getFullYear() + (monthNumber === 12 ? 1 : 0);
-    const monthString = monthNumber.toString().padStart(2, '0');
-    const firstDay = new Date(year, monthNumber - 1, 1);
-    const lastDay = new Date(year, monthNumber, 0);
-
-    let currentDate = new Date(firstDay);
-    while (currentDate <= lastDay) {
-      const dayOfWeek = getDayOfWeekPL(currentDate.getDay());
-      const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
-      const dateKey = `${dayOfMonth}.${monthString}`;
-      const row = menuTableBody.insertRow();
-      row.insertCell().textContent = lp++;
-      row.insertCell().textContent = dateKey;
-      row.insertCell().textContent = dayOfWeek;
-      const cellPierwsze = row.insertCell();
-      const cellWyborPierwsze = row.insertCell();
-      const cellDrugie = row.insertCell();
-      const cellWyborDrugie = row.insertCell();
-
-      if (parsedDates[dateKey]) {
-        cellPierwsze.textContent = parsedDates[dateKey].pierwszeDanie || '';
-        cellPierwsze.classList.add('dish-name');
-        const checkboxPierwsze = document.createElement('input');
-        checkboxPierwsze.type = 'checkbox';
-        checkboxPierwsze.classList.add('form-check-input');
-        checkboxPierwsze.checked = true;
-        cellWyborPierwsze.appendChild(checkboxPierwsze);
-
-        cellDrugie.textContent = parsedDates[dateKey].drugieDanie || '';
-        cellDrugie.classList.add('dish-name');
-        const checkboxDrugie = document.createElement('input');
-        checkboxDrugie.type = 'checkbox';
-        checkboxDrugie.classList.add('form-check-input');
-        checkboxDrugie.checked = true;
-        cellWyborDrugie.appendChild(checkboxDrugie);
-
-        if (debugEnabled) debugLog.push(`📅 Dodano do tabeli: ${dateKey} (${dayOfWeek})`);
-      } else {
-        row.classList.add('table-secondary');
-        if (debugEnabled) debugLog.push(`⚠️ Brak danych dla ${dateKey} (${dayOfWeek})`);
-      }
-
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    document.getElementById('summaryMonth').textContent = monthName;
-    summaryBox.style.display = 'flex';
-    totalCostAllMealsContainer.classList.remove('d-none');
-    attachSummaryListeners();
-    attachTooltipListeners();
-
-    // Wyświetl debugLog
-    if (debugEnabled && debugLog.length > 0) {
-      debugBox.innerHTML = debugLog.join('<br>');
-    }
-  } catch (error) {
-    document.getElementById('warningBox').classList.remove('d-none');
-    if (toggleDebugCheckbox.checked) {
-      debugBox.innerHTML = `❌ Błąd parsowania:<br>${error.message}`;
-    }
-  }
-}
-
-
-    function getMonthName(monthNumber) {
-      const months = ["", "stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia", "września", "października", "listopada", "grudnia"];
-      return months[monthNumber] || "";
-    }
-
-    function getDayOfWeekPL(dayIndex) {
-      const days = ["Niedziela", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota"];
-      return days[dayIndex];
-    }
-
-    function attachSummaryListeners() {
-      const firstCoursePriceInput = document.getElementById('firstCoursePrice');
-      const secondCoursePriceInput = document.getElementById('secondCoursePrice');
-      const rows = document.querySelectorAll('#menuTable tbody tr');
-      const selectedFirstCoursesCountSpan = document.getElementById('selectedFirstCoursesCount');
-      const totalFirstCoursesCostSpan = document.getElementById('totalFirstCoursesCost');
-      const selectedSecondCoursesCountSpan = document.getElementById('selectedSecondCoursesCount');
-      const totalSecondCoursesCostSpan = document.getElementById('totalSecondCoursesCost');
-      const totalCostAllMealsSpan = document.getElementById('totalCostAllMeals');
-
-      const updateSummary = () => {
-        let countFirst = 0;
-        let countSecond = 0;
-        rows.forEach(row => {
-          if (!row.classList.contains('table-secondary')) {
-            const checkboxes = row.querySelectorAll('input[type="checkbox"]');
-            if (checkboxes.length === 2) {
-              if (checkboxes[0].checked) countFirst++;
-              if (checkboxes[1].checked) countSecond++;
-            }
-          }
-        });
-        const priceFirst = parseFloat(firstCoursePriceInput.value) || 0;
-        const priceSecond = parseFloat(secondCoursePriceInput.value) || 0;
-        const totalFirstCost = countFirst * priceFirst;
-        const totalSecondCost = countSecond * priceSecond;
-        const totalAllMealsCost = totalFirstCost + totalSecondCost;
-        selectedFirstCoursesCountSpan.textContent = countFirst;
-        totalFirstCoursesCostSpan.textContent = totalFirstCost.toFixed(2);
-        selectedSecondCoursesCountSpan.textContent = countSecond;
-        totalSecondCoursesCostSpan.textContent = totalSecondCost.toFixed(2);
-        totalCostAllMealsSpan.textContent = totalAllMealsCost.toFixed(2);
-      };
-
-      firstCoursePriceInput.addEventListener('input', updateSummary);
-      secondCoursePriceInput.addEventListener('input', updateSummary);
-      rows.forEach(row => {
-        row.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-          checkbox.addEventListener('change', updateSummary);
-        });
-      });
-      updateSummary();
-    }
-
-function attachTooltipListeners() {
-  const debugEnabled = toggleDebugCheckbox.checked;
-  const debugLog = [];
-
-  const elements = document.querySelectorAll('.dish-name');
-
-  elements.forEach(el => {
-    const dishText = el.textContent.trim().toLowerCase();
-    let matchedKey = null;
-
-    for (const keyword in keywordDefinitions) {
-      if (dishText.includes(keyword)) {
-        matchedKey = keyword;
-        break;
-      }
-    }
-
-    if (!matchedKey && debugEnabled) {
-      debugLog.push(`❗ Brak definicji dla dania: <strong>${dishText}</strong>`);
-      el.classList.add('text-danger');
-    }
-
-    tippy(el, {
-      content: matchedKey ? keywordDefinitions[matchedKey] : 'Brak definicji.',
-      allowHTML: true,
-      theme: localStorage.getItem('theme') === 'dark' ? 'dark' : 'light',
-      placement: 'top',
-    });
-  });
-
-  if (debugEnabled && debugLog.length > 0) {
-    debugBox.innerHTML += '<br><br><strong>⚠️ Dania bez definicji:</strong><br>' + debugLog.join('<br>');
-  }
-}
-
-function copyDeclarationTable() {
-  const table = document.querySelector('#declarationTableContainer table');
-  if (!table) {
-    alert('Brak tabeli do skopiowania');
-    return;
-  }
-
-  // Zawartość tabeli (ma już inline style z generateDeclaration)
-  const tableHtml = table.outerHTML;
-
-  // Przygotuj pełny HTML z meta i style które Word/klient pocztowy może wykorzystać
-  const htmlDocument = `
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          /* dodatkowe zabezpieczenia stylów - nie nadpisują inline, ale pomagają */
-          table { width:100%; border-collapse:collapse; table-layout:fixed; }
-          th, td { border:1px solid black; padding:6px; text-align:center; }
-        </style>
-      </head>
-      <body>
-        ${tableHtml}
-      </body>
-    </html>
-  `;
-
-  // Spróbuj zapisać do schowka jako HTML (nowoczesne przeglądarki)
-  if (navigator.clipboard && window.ClipboardItem) {
-    navigator.clipboard.write([
-      new ClipboardItem({
-        "text/html": new Blob([htmlDocument], { type: "text/html" }),
-        "text/plain": new Blob([table.innerText], { type: "text/plain" })
-      })
-    ]).then(() => {
-      alert("Tabela skopiowana jako HTML. Wklej do Worda/maila (Ctrl+V).");
-    }).catch(err => {
-      console.error("Clipboard write failed:", err);
-      fallbackCopy(htmlDocument);
-    });
-  } else {
-    // fallback dla starych przeglądarek
-    fallbackCopy(htmlDocument);
-  }
-
-  // Fallback: tworzy tymczasowy element, selekcjonuje i wykonuje execCommand('copy')
-  function fallbackCopy(html) {
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.innerHTML = html;
-    document.body.appendChild(container);
-
-    const range = document.createRange();
-    range.selectNodeContents(container);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-
-    try {
-      document.execCommand('copy');
-      alert("Tabela skopiowana (fallback). Wklej do Worda/maila.");
-    } catch (err) {
-      console.error('Fallback copy failed', err);
-      alert("Nie udało się skopiować automatycznie. Zaznacz tabelę ręcznie i skopiuj (Ctrl+C).");
-    }
-
-    sel.removeAllRanges();
-    document.body.removeChild(container);
-  }
-}
-
-
-
+    }, 1000);
   </script>
+
 </body>
 
 </html>
