@@ -3,26 +3,22 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1f9d63">
   <title>Generator deklaracji obiadowej z Katolika</title>
-    <!-- Favicons -->
+  <!-- Favicons -->
   <link rel="icon" href="https://katolik.info.pl/wp-content/uploads/2021/03/fav16.gif" type="image/gif" sizes="16x16">
   <link rel="icon" href="https://katolik.info.pl/wp-content/uploads/2021/03/fav32.gif" type="image/gif" sizes="32x32">
-  
-  <script>console.log('🟢 HTML HEAD - start ładowania');</script>
-  
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script>console.log('✅ Bootstrap CSS załadowany');</script>
-  
-  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
-  <script>console.log('✅ Tippy CSS załadowany');</script>
-  
+  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css">
   <link rel="stylesheet" href="styles.css">
-  <script>console.log('✅ styles.css załadowany (lub próba załadowania)');</script>
 </head>
 
 <body>
-  <script>console.log('🟢 BODY - start renderowania');</script>
   <!-- <script>
     // =======================================================
 // [START] BLOKADA UNDER CONSTRUCTION (Wymaga zmiany hasła!)
@@ -132,37 +128,50 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
 // [END] BLOKADA UNDER CONSTRUCTION
 // =======================================================
     </script> -->
-  <!-- Debug banner -->
-  <div id="debugBanner" style="background: #007bff; color: white; padding: 10px; text-align: center; font-weight: bold;">
-    🔍 Strona się ładuje... Sprawdź konsolę (F12)
-  </div>
 
-  <!-- NAVBAR z logo i przyciskami -->
-  <nav class="navbar navbar-dark mb-4" style="position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <div class="container-fluid">
-      <!-- Logo i tytuł po lewej -->
-      <div class="d-flex align-items-center">
-        <img src="logo.png" alt="Logo Katolika" style="height: 40px; margin-right: 15px;" onerror="this.style.display='none'">
-        <span class="navbar-brand mb-0 h1" style="margin: 0;">Generator deklaracji obiadowej z Katolika</span>
-      </div>
-      
-      <!-- Przyciski po prawej (zawsze razem) -->
-      <div class="d-flex align-items-center gap-2">
-        <button class="theme-toggle" id="devMenuToggle" title="Narzędzia deweloperskie" style="background: transparent; border: none; color: white; font-size: 24px; cursor: pointer; padding: 5px 10px; margin: 0;">
-          ⚙️
+  <!-- Ikony (wzorowane na zestawie Lucide) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></symbol>
+    <symbol id="i-utensils" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  </svg>
+
+  <!-- Górny pasek -->
+  <header class="app-bar">
+    <div class="app-bar-inner">
+      <a class="brand" href="./">
+        <img src="logo.png" alt="Logo Katolika" class="brand-logo" onerror="this.style.display='none'">
+        <span class="brand-text">
+          <span class="brand-title">Deklaracja obiadowa</span>
+          <span class="brand-sub">Generator dla rodziców z Katolika</span>
+        </span>
+      </a>
+      <div class="app-bar-actions">
+        <button class="icon-btn" id="devMenuToggle" title="Narzędzia deweloperskie" aria-label="Narzędzia deweloperskie">
+          <svg class="icon"><use href="#i-sliders"/></svg>
         </button>
-        <button class="theme-toggle" id="themeToggleBtn" title="Zmień motyw" style="margin: 0;">
-          <span id="themeIcon">☀️</span>
+        <button class="icon-btn" id="themeToggleBtn" title="Zmień motyw" aria-label="Zmień motyw">
+          <svg class="icon icon-sun"><use href="#i-sun"/></svg>
+          <svg class="icon icon-moon"><use href="#i-moon"/></svg>
+          <span id="themeIcon" class="visually-hidden">☀️</span>
         </button>
       </div>
     </div>
-  </nav>
+  </header>
 
-  <script>console.log('✅ Navbar renderowany');</script>
-
-  <!-- Menu deweloperskie (wysuwane po kliknięciu ⚙️) -->
+  <!-- Menu deweloperskie (wysuwane po kliknięciu ikony suwaków) -->
   <div class="dev-menu d-none" id="devMenu">
-    <h6 class="mb-3">🛠️ Narzędzia Deweloperskie</h6>
+    <h6 class="mb-3">Narzędzia deweloperskie</h6>
     <div class="form-check form-switch mb-2">
       <input class="form-check-input" type="checkbox" id="toggleTextarea">
       <label class="form-check-label" for="toggleTextarea">Pole tekstowe</label>
@@ -173,332 +182,339 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
     </div>
   </div>
 
-  <script>console.log('✅ Dev menu renderowane');</script>
+  <main class="app-main">
 
-  <div class="container mt-4">
-    
-    <!-- KROK 1: Wczytanie menu -->
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">📋 Krok 1: Wczytaj plik menu</h5>
-        <input type="file" id="fileInput" class="form-control mb-3" accept=".doc,.docx">
-        <button id="convertBtn" class="btn btn-primary d-none">Konwertuj</button>
-        <div id="loadingSpinner" class="text-center my-3 d-none">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+    <section class="hero">
+      <p class="hero-eyebrow">Obiady w szkole</p>
+      <h1 class="hero-title">Zaplanuj obiady na cały miesiąc</h1>
+      <p class="hero-lead">Wczytaj jadłospis, zaznacz obiady dla dziecka i pobierz gotową deklarację oraz kalendarz na lodówkę.</p>
+      <ol class="hero-steps">
+        <li><span>1</span>Jadłospis</li>
+        <li><span>2</span>Wybór obiadów</li>
+        <li><span>3</span>Deklaracja</li>
+      </ol>
+    </section>
+
+    <div class="app-grid">
+
+      <!-- KROK 1: Wczytanie menu -->
+      <section class="panel area-upload">
+        <header class="panel-head">
+          <span class="step-badge">1</span>
+          <div>
+            <h2 class="panel-title">Wczytaj jadłospis</h2>
+            <p class="panel-sub">Plik Word (.doc lub .docx) z jadłospisem na dany miesiąc</p>
           </div>
-          <p>Przetwarzanie pliku, proszę czekać...</p>
+        </header>
+
+        <label class="dropzone" id="dropzone" for="fileInput">
+          <span class="dropzone-icon"><svg class="icon"><use href="#i-upload"/></svg></span>
+          <span class="dropzone-text">
+            <span class="dropzone-title" id="dropzoneTitle">Wybierz plik z jadłospisem</span>
+            <span class="dropzone-hint">Po wybraniu pliku menu wczyta się samo<span class="drop-only">, możesz go też tu upuścić</span></span>
+          </span>
+          <input type="file" id="fileInput" class="visually-hidden" accept=".doc,.docx">
+        </label>
+
+        <div class="d-flex gap-2 flex-wrap mt-3">
+          <button id="generateMenuBtn" class="btn btn-soft">Wczytaj ponownie</button>
+          <button id="convertBtn" class="btn btn-soft d-none">Konwertuj</button>
         </div>
+
+        <div id="loadingSpinner" class="loading d-none" role="status">
+          <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+          <span>Przetwarzanie pliku, proszę czekać...</span>
+        </div>
+
         <textarea id="convertedText" class="form-control my-3 d-none" rows="6"
           placeholder="Tutaj pojawi się przekonwertowany tekst"></textarea>
-        <button id="generateMenuBtn" class="btn btn-success my-3">Generuj Menu</button>
-      </div>
-    </div>
 
-    <script>console.log('✅ Krok 1 - formularz wczytywania');</script>
+        <div id="historySection" class="history d-none">
+          <h3 class="history-title"><svg class="icon"><use href="#i-clock"/></svg>Ostatnio wczytane</h3>
+          <div id="historyList" class="history-list"></div>
+          <button class="expand-btn d-none" id="expandHistoryBtn">Pokaż więcej...</button>
+        </div>
 
-    <div id="historySection" class="card d-none">
-      <div class="card-body">
-        <h5 class="card-title">📋 Ostatnio wczytane</h5>
-        <div id="historyList" class="history-list"></div>
-        <button class="expand-btn d-none" id="expandHistoryBtn">Pokaż więcej...</button>
-      </div>
-    </div>
+        <div id="debugBox" class="alert alert-info d-none mt-3"></div>
+        <div id="warningBox" class="alert alert-warning d-none mt-3">Zawartość pliku nie jest zgodna z oczekiwaniami!</div>
+      </section>
 
-    <div id="debugBox" class="alert alert-info d-none mt-3"></div>
-    <div id="warningBox" class="alert alert-warning d-none">Zawartość pliku nie jest zgodna z oczekiwaniami!</div>
+      <!-- KROK 2: Wybór obiadów -->
+      <section class="panel area-menu">
+        <header class="panel-head">
+          <span class="step-badge">2</span>
+          <div>
+            <h2 class="panel-title">Wybierz obiady</h2>
+            <p class="panel-sub">Zaznacz dania, które dziecko ma zjeść w szkole</p>
+          </div>
+        </header>
 
-    <!-- KROK 2: Wybór obiadów -->
-<!-- KROK 2: Wybór obiadów -->
-<div class="card">
-  <div class="card-body">
-    <h5 class="card-title">🍽️ Krok 2: Wybierz obiady</h5>
-    
+        <div class="menu-table-wrap">
+          <table id="menuTable" class="menu-table">
+            <thead>
+              <!-- Wiersz z przyciskami zbiorczymi (tylko telefon) -->
+              <tr class="mobile-select-row">
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>
+                  <button class="mobile-toggle-btn" data-column="first" onclick="toggleMobileColumn('first')">
+                    <span class="btn-icon">●</span>
+                    <span class="btn-label">Wszystkie zupy</span>
+                  </button>
+                </th>
+                <th></th>
+                <th>
+                  <button class="mobile-toggle-btn" data-column="second" onclick="toggleMobileColumn('second')">
+                    <span class="btn-icon">●</span>
+                    <span class="btn-label">Wszystkie drugie</span>
+                  </button>
+                </th>
+                <th></th>
+              </tr>
 
-    
-    <div class="table-responsive">
-          <table id="menuTable" class="table table-hover">
-<thead>
-  <!-- Wiersz z przyciskami zbiorczymi (tylko mobile) -->
-  <tr class="mobile-select-row">
-    <th></th>
-    <th></th>
-    <th></th>
-
-    <th style="padding: 8px 4px;">
-      <button class="mobile-toggle-btn" data-column="first" onclick="toggleMobileColumn('first')">
-        <span class="btn-icon">●</span>
-        <span class="btn-label">Zupy</span>
-      </button>
-    </th>
-    <th></th>
-    <th style="padding: 8px 4px;">
-      <button class="mobile-toggle-btn" data-column="second" onclick="toggleMobileColumn('second')">
-        <span class="btn-icon">●</span>
-        <span class="btn-label">Drugie</span>
-      </button>
-    </th>
-    <th></th>
-  </tr>
-  
-  <tr>
-    <th>Lp.</th>
-    <th>Data</th>
-    <th>Dzień</th>
-    <th>Pierwsze danie</th>
-    <th style="text-align: center;">
-      <div style="font-size: 0.85em; margin-bottom: 5px;">Wybór</div>
-      <input type="checkbox" id="selectAllFirst" class="form-check-input" title="Zaznacz/odznacz wszystkie">
-    </th>
-    <th>Drugie danie</th>
-    <th style="text-align: center;">
-      <div style="font-size: 0.85em; margin-bottom: 5px;">Wybór</div>
-      <input type="checkbox" id="selectAllSecond" class="form-check-input" title="Zaznacz/odznacz wszystkie">
-    </th>
-  </tr>
-</thead>
+              <tr class="menu-head-row">
+                <th>Lp.</th>
+                <th>Data</th>
+                <th>Dzień</th>
+                <th>Pierwsze danie</th>
+                <th class="choice-head">
+                  <input type="checkbox" id="selectAllFirst" class="form-check-input" title="Zaznacz/odznacz wszystkie zupy" aria-label="Zaznacz wszystkie zupy">
+                </th>
+                <th>Drugie danie</th>
+                <th class="choice-head">
+                  <input type="checkbox" id="selectAllSecond" class="form-check-input" title="Zaznacz/odznacz wszystkie drugie dania" aria-label="Zaznacz wszystkie drugie dania">
+                </th>
+              </tr>
+            </thead>
             <tbody></tbody>
           </table>
+          <div class="menu-empty">
+            <svg class="icon"><use href="#i-utensils"/></svg>
+            <p>Tu pojawią się dni miesiąca z daniami, gdy wczytasz jadłospis.</p>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <!-- Panel boczny: podsumowanie i kalendarz -->
+      <aside class="area-side">
+        <section id="summaryBox" class="panel summary d-none">
+          <header class="panel-head panel-head-compact">
+            <div>
+              <h2 class="panel-title">Podsumowanie</h2>
+              <p class="panel-sub">Ceny uzupełniają się z jadłospisu, możesz je zmienić</p>
+            </div>
+          </header>
+
+          <div class="total-card">
+            <span class="total-label">Koszt obiadów z <span id="summaryMonth"></span></span>
+            <span class="total-value"><span id="totalCostAllMeals">0.00</span> zł</span>
+          </div>
+
+          <div class="stat-list">
+            <div class="stat-row stat-soup">
+              <div class="stat-main">
+                <span class="stat-name">Tylko zupa</span>
+                <span class="stat-meta">Zaznaczone: <strong id="selectedFirstCoursesCount">0</strong></span>
+              </div>
+              <label class="price-field">
+                <input type="number" id="firstCoursePrice" value="8.50" min="0" step="0.01" class="form-control" aria-label="Cena zupy">
+                <span>zł</span>
+              </label>
+              <span class="stat-sum">Suma: <strong><span id="totalFirstCoursesCost">0.00</span> zł</strong></span>
+            </div>
+
+            <div class="stat-row stat-main-dish">
+              <div class="stat-main">
+                <span class="stat-name">Tylko drugie danie</span>
+                <span class="stat-meta">Zaznaczone: <strong id="selectedSecondCoursesCount">0</strong></span>
+              </div>
+              <label class="price-field">
+                <input type="number" id="secondCoursePrice" value="18.00" min="0" step="0.01" class="form-control" aria-label="Cena drugiego dania">
+                <span>zł</span>
+              </label>
+              <span class="stat-sum">Suma: <strong><span id="totalSecondCoursesCost">0.00</span> zł</strong></span>
+            </div>
+
+            <div class="stat-row stat-combo">
+              <div class="stat-main">
+                <span class="stat-name">Zestaw (zupa + drugie danie)</span>
+                <span class="stat-meta">Cena obowiązuje w dni z oboma daniami</span>
+              </div>
+              <label class="price-field">
+                <input type="number" id="comboPrice" value="23.50" min="0" step="0.01" class="form-control" aria-label="Cena zestawu">
+                <span>zł</span>
+              </label>
+              <small id="comboSelectedInfo" class="stat-sum"></small>
+            </div>
+          </div>
+        </section>
+
+        <!-- Kalendarz na lodówkę -->
+        <section id="fridgeCalendarSection" class="panel fridge d-none">
+          <header class="panel-head panel-head-compact">
+            <span class="panel-icon"><svg class="icon"><use href="#i-calendar"/></svg></span>
+            <div>
+              <h2 class="panel-title">Kalendarz na lodówkę</h2>
+              <p class="panel-sub">Od razu widać, w które dni dziecko potrzebuje kanapki</p>
+            </div>
+          </header>
+          <div class="format-grid">
+            <button class="format-btn" onclick="downloadFridgeCalendar('pdf')"><span class="format-tag tag-pdf">PDF</span>Do druku</button>
+            <button class="format-btn" onclick="downloadFridgeCalendar('docx')"><span class="format-tag tag-docx">DOCX</span>Word</button>
+            <button class="format-btn" onclick="downloadFridgeCalendar('txt')"><span class="format-tag tag-txt">TXT</span>Tekst</button>
+          </div>
+        </section>
+
+        <section class="panel tips">
+          <h2 class="panel-title">Jak to działa?</h2>
+          <ol class="tips-list">
+            <li>Wybierz plik z jadłospisem. Dni i dania wczytają się same.</li>
+            <li>Odznacz dania, których dziecko nie będzie jeść. Koszt policzy się automatycznie.</li>
+            <li>Wygeneruj deklarację i wyślij ją e-mailem albo zapisz jako PDF.</li>
+          </ol>
+        </section>
+      </aside>
+
+      <!-- KROK 3: Deklaracja -->
+      <section class="panel area-declaration" id="declarationCard">
+        <header class="panel-head">
+          <span class="step-badge">3</span>
+          <div>
+            <h2 class="panel-title">Deklaracja</h2>
+            <p class="panel-sub">Tabela w formacie wymaganym przez szkołę</p>
+          </div>
+        </header>
+
+        <button id="generateDeclarationBtn" class="btn btn-primary btn-lg-wide">
+          <svg class="icon"><use href="#i-file"/></svg>
+          Generuj tabelę do deklaracji
+        </button>
+
+        <div id="declarationTableContainer" class="paper"></div>
+
+        <!-- KROK 4: Wybór formatu -->
+        <div id="declarationActions" class="d-none">
+          <h3 class="actions-title">Jak chcesz wysłać deklarację?</h3>
+          <div class="action-grid">
+            <button class="action-btn" onclick="copyDeclarationTable()">
+              <span class="action-icon"><svg class="icon"><use href="#i-copy"/></svg></span>
+              <span><strong>Kopiuj tabelę</strong><small>Wklej ją w dowolnym miejscu</small></span>
+            </button>
+            <button class="action-btn" onclick="showEmailForm()">
+              <span class="action-icon"><svg class="icon"><use href="#i-mail"/></svg></span>
+              <span><strong>Wyślij e-mailem</strong><small>Gmail, Outlook lub program pocztowy</small></span>
+            </button>
+            <button class="action-btn" onclick="showPDFForm()">
+              <span class="action-icon"><svg class="icon"><use href="#i-download"/></svg></span>
+              <span><strong>Generuj PDF</strong><small>Z podpisem lub bez</small></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SEKCJA EMAIL -->
+        <div id="emailFormSection" class="subpanel d-none">
+          <h3 class="subpanel-title"><svg class="icon"><use href="#i-mail"/></svg>Wyślij e-mailem</h3>
+
+          <div class="form-grid">
+            <div class="form-grid-full">
+              <label for="emailTo" class="form-label">E-mail odbiorcy</label>
+              <input type="email" class="form-control" id="emailTo" value="agnieszkakupczyk@katolik.info.pl">
+            </div>
+            <div>
+              <label for="childName" class="form-label">Imię i nazwisko dziecka <span class="optional">opcjonalne</span></label>
+              <input type="text" class="form-control" id="childName" placeholder="np. Jan Kowalski" autocomplete="off">
+            </div>
+            <div>
+              <label for="childClass" class="form-label">Klasa <span class="optional">opcjonalne</span></label>
+              <input type="text" class="form-control" id="childClass" placeholder="np. 3a" autocomplete="off">
+            </div>
+            <div class="form-grid-full">
+              <label for="healthNotes" class="form-label">Zalecenia zdrowotne</label>
+              <input type="text" class="form-control" id="healthNotes" value="brak">
+            </div>
+          </div>
+
+          <p class="form-label mt-3">Wybierz program pocztowy</p>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-soft" onclick="sendViaGmail()">Gmail</button>
+            <button class="btn btn-soft" onclick="sendViaOutlook()">Outlook Web</button>
+            <button class="btn btn-soft" onclick="sendViaLocalClient()">Program lokalny</button>
+          </div>
+
+          <button class="btn btn-link-muted mt-3" onclick="hideEmailForm()">Anuluj</button>
+        </div>
+
+        <!-- SEKCJA PDF -->
+        <div id="pdfFormSection" class="subpanel d-none">
+          <h3 class="subpanel-title"><svg class="icon"><use href="#i-download"/></svg>Generuj PDF</h3>
+
+          <div class="form-grid">
+            <div>
+              <label for="childNamePDF" class="form-label">Imię i nazwisko dziecka <span class="optional">opcjonalne</span></label>
+              <input type="text" class="form-control" id="childNamePDF" placeholder="np. Jan Kowalski" autocomplete="off">
+            </div>
+            <div>
+              <label for="childClassPDF" class="form-label">Klasa <span class="optional">opcjonalne</span></label>
+              <input type="text" class="form-control" id="childClassPDF" placeholder="np. 3a" autocomplete="off">
+            </div>
+            <div class="form-grid-full">
+              <label for="healthNotesPDF" class="form-label">Zalecenia zdrowotne</label>
+              <input type="text" class="form-control" id="healthNotesPDF" value="brak">
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap mt-3">
+            <button class="btn btn-primary" onclick="generatePDFWithoutSignature()">
+              <svg class="icon"><use href="#i-download"/></svg>PDF bez podpisu
+            </button>
+            <button class="btn btn-soft" onclick="toggleSignatureSection()">
+              <svg class="icon"><use href="#i-pen"/></svg>Dodaj podpis
+            </button>
+          </div>
+
+          <!-- Sekcja podpisu (ukryta domyślnie) -->
+          <div id="signatureSection" class="signature d-none">
+            <h4 class="subpanel-title">Złóż podpis</h4>
+            <p class="text-muted small mb-0">Podpisz się w polu poniżej palcem albo myszą</p>
+
+            <canvas id="signatureCanvas" width="600" height="200"></canvas>
+
+            <div class="signature-tools">
+              <button class="btn btn-soft btn-sm" onclick="clearSignature()">Wyczyść</button>
+              <button class="btn btn-soft btn-sm" onclick="changeSignatureColor('#000000')"><span class="swatch" style="background:#000"></span>Czarny</button>
+              <button class="btn btn-soft btn-sm" onclick="changeSignatureColor('#0000ff')"><span class="swatch" style="background:#0000ff"></span>Niebieski</button>
+              <button class="btn btn-soft btn-sm" onclick="changeSignatureThickness(2)">Cienka linia</button>
+              <button class="btn btn-soft btn-sm" onclick="changeSignatureThickness(5)">Gruba linia</button>
+            </div>
+
+            <button class="btn btn-primary w-100" onclick="generatePDFWithSignature()">
+              <svg class="icon"><use href="#i-download"/></svg>Generuj PDF z podpisem
+            </button>
+          </div>
+
+          <button class="btn btn-link-muted mt-3" onclick="hidePDFForm()">Anuluj</button>
+        </div>
+      </section>
+
     </div>
+  </main>
 
-    <script>console.log('✅ Krok 2 - tabela menu');</script>
-
-    <div id="summaryBox" class="d-none">
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <h6>Tylko zupa</h6>
-          <p>Zaznaczone: <strong><span id="selectedFirstCoursesCount">0</span></strong></p>
-          <p>Cena: <input type="number" id="firstCoursePrice" value="8.50" min="0" step="0.01" class="form-control form-control-sm d-inline-block" style="width: 100px;"> PLN</p>
-          <p>Suma: <strong><span id="totalFirstCoursesCost">0.00</span> PLN</strong></p>
-        </div>
-        <div class="col-md-4 mb-3">
-          <h6>Tylko drugie danie</h6>
-          <p>Zaznaczone: <strong><span id="selectedSecondCoursesCount">0</span></strong></p>
-          <p>Cena: <input type="number" id="secondCoursePrice" value="18.00" min="0" step="0.01" class="form-control form-control-sm d-inline-block" style="width: 100px;"> PLN</p>
-          <p>Suma: <strong><span id="totalSecondCoursesCost">0.00</span> PLN</strong></p>
-        </div>
-        <div class="col-md-4 mb-3">
-          <h6>Zestaw (zupa + drugie danie)</h6>
-          <p class="text-muted mb-1"><small>Cena zestawu obowiązuje automatycznie dla dni, w których zaznaczono oba dania.</small></p>
-          <p>Cena: <input type="number" id="comboPrice" value="23.50" min="0" step="0.01" class="form-control form-control-sm d-inline-block" style="width: 100px;"> PLN</p>
-          <p><small id="comboSelectedInfo" class="text-muted"></small></p>
-        </div>
-      </div>
-      <div class="alert alert-info mt-3">
-        <h5>Całkowity koszt obiadów (<span id="summaryMonth"></span>): <strong><span id="totalCostAllMeals">0.00</span> PLN</strong></h5>
-      </div>
+  <!-- Dolny pasek na telefonie: koszt i szybkie przejście do deklaracji -->
+  <div id="mobileTotalBar" class="mobile-bar d-none">
+    <div class="mobile-bar-total">
+      <small>Dni z obiadem: <span id="mobileMealDays">0</span></small>
+      <strong><span id="mobileTotalCost">0.00</span> zł</strong>
     </div>
-
-    <!-- Kalendarz na lodówkę -->
-    <div id="fridgeCalendarSection" class="card d-none my-3">
-      <div class="card-body">
-        <h5 class="card-title">🗓️ Kalendarz na lodówkę</h5>
-        <p class="text-muted mb-3">Cały miesiąc z zamówionymi daniami. Od razu widać, w które dni dziecko potrzebuje kanapki do szkoły.</p>
-        <div class="d-flex gap-2 flex-wrap">
-          <button class="btn btn-outline-secondary" onclick="downloadFridgeCalendar('txt')">📝 Pobierz TXT</button>
-          <button class="btn btn-outline-primary" onclick="downloadFridgeCalendar('docx')">📘 Pobierz DOCX</button>
-          <button class="btn btn-outline-danger" onclick="downloadFridgeCalendar('pdf')">📄 Pobierz PDF</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- KROK 3: Generowanie tabeli -->
-    <button id="generateDeclarationBtn" class="btn btn-warning my-3">
-      📊 Krok 3: Generuj tabelę do deklaracji
-    </button>
-
-    <div id="declarationTableContainer" class="mt-4"></div>
-
-    <script>console.log('✅ Krok 3 - generowanie tabeli');</script>
-
-    <!-- KROK 4: Wybór formatu -->
-<div id="declarationActions" class="d-none my-3">
-  <h5 class="mb-3">📤 Jak chcesz wysłać deklarację?</h5>
-  <div class="d-flex gap-2 flex-wrap">
-    <button class="btn btn-secondary" onclick="copyDeclarationTable()">
-      📋 Kopiuj tabelę
-    </button>
-    <button class="btn btn-primary" onclick="showEmailForm()">
-      📧 Wyślij e-mailem
-    </button>
-    <button class="btn btn-success" onclick="showPDFForm()">
-      📄 Generuj PDF
+    <button class="btn btn-primary" onclick="goToDeclaration()">
+      Deklaracja <svg class="icon"><use href="#i-arrow"/></svg>
     </button>
   </div>
-</div>
 
-    <script>console.log('✅ Krok 4 - przyciski akcji');</script>
-  
-    <!-- WSPÓLNY FORMULARZ dla EMAIL i PDF -->
-<!-- SEKCJA EMAIL -->
-<div id="emailFormSection" class="card d-none my-3">
-  <div class="card-body">
-    <h5>📧 Wyślij e-mailem</h5>
-    
-    <div class="mb-3">
-      <label for="emailTo" class="form-label">E-mail odbiorcy:</label>
-      <input type="email" class="form-control" id="emailTo" value="agnieszkakupczyk@katolik.info.pl">
-    </div>
-    
-    <div class="mb-3">
-      <label for="childName" class="form-label">Imię i nazwisko dziecka:</label>
-      <input type="text" class="form-control" id="childName" placeholder="np. Jan Kowalski">
-      <small class="text-muted">Opcjonalne</small>
-    </div>
-    
-    <div class="mb-3">
-      <label for="childClass" class="form-label">Klasa:</label>
-      <input type="text" class="form-control" id="childClass" placeholder="np. 3a">
-      <small class="text-muted">Opcjonalne</small>
-    </div>
-    
-    <div class="mb-3">
-      <label for="healthNotes" class="form-label">Zalecenia zdrowotne:</label>
-      <input type="text" class="form-control" id="healthNotes" value="brak">
-    </div>
-    
-    <h6 class="mt-4">Wybierz program pocztowy:</h6>
-    <div class="d-flex gap-2 flex-wrap">
-      <button class="btn btn-danger" onclick="sendViaGmail()">
-        📧 Gmail
-      </button>
-      <button class="btn btn-info" onclick="sendViaOutlook()">
-        📨 Outlook Web
-      </button>
-      <button class="btn btn-success" onclick="sendViaLocalClient()">
-        💻 Program lokalny
-      </button>
-    </div>
-    
-    <button class="btn btn-secondary mt-3" onclick="hideEmailForm()">
-      Anuluj
-    </button>
-  </div>
-</div>
-
-<!-- SEKCJA PDF -->
-<div id="pdfFormSection" class="card d-none my-3">
-  <div class="card-body">
-    <h5>📄 Generuj PDF</h5>
-    
-    <div class="mb-3">
-      <label for="childNamePDF" class="form-label">Imię i nazwisko dziecka:</label>
-      <input type="text" class="form-control" id="childNamePDF" placeholder="np. Jan Kowalski">
-      <small class="text-muted">Opcjonalne</small>
-    </div>
-    
-    <div class="mb-3">
-      <label for="childClassPDF" class="form-label">Klasa:</label>
-      <input type="text" class="form-control" id="childClassPDF" placeholder="np. 3a">
-      <small class="text-muted">Opcjonalne</small>
-    </div>
-    
-    <div class="mb-3">
-      <label for="healthNotesPDF" class="form-label">Zalecenia zdrowotne:</label>
-      <input type="text" class="form-control" id="healthNotesPDF" value="brak">
-    </div>
-    
-    <div class="d-flex gap-2 flex-wrap">
-      <button class="btn btn-success" onclick="generatePDFWithoutSignature()">
-        📄 Generuj PDF bez podpisu
-      </button>
-      <button class="btn btn-primary" onclick="toggleSignatureSection()">
-        ✏️ Dodaj podpis i generuj
-      </button>
-    </div>
-    
-    <!-- Sekcja podpisu (ukryta domyślnie) -->
-    <div id="signatureSection" class="d-none mt-4">
-      <hr>
-      <h6>✏️ Złóż podpis</h6>
-      <p class="text-muted">Podpisz się w polu poniżej używając myszy lub ekranu dotykowego</p>
-      
-      <canvas id="signatureCanvas" width="600" height="200" style="border: 2px solid #ddd; border-radius: 5px; cursor: crosshair; display: block; margin: 20px auto; background: white;"></canvas>
-      
-      <div class="signature-tools text-center mb-3">
-        <button class="btn btn-sm btn-danger" onclick="clearSignature()">🗑️ Wyczyść</button>
-        <button class="btn btn-sm btn-dark" onclick="changeSignatureColor('#000000')">Czarny</button>
-        <button class="btn btn-sm btn-primary" onclick="changeSignatureColor('#0000ff')">Niebieski</button>
-        <button class="btn btn-sm btn-secondary" onclick="changeSignatureThickness(2)">Cienka linia</button>
-        <button class="btn btn-sm btn-secondary" onclick="changeSignatureThickness(5)">Gruba linia</button>
-      </div>
-      
-      <button class="btn btn-success w-100" onclick="generatePDFWithSignature()">
-        📄 Generuj PDF z podpisem
-      </button>
-    </div>
-    
-    <button class="btn btn-secondary mt-3" onclick="hidePDFForm()">
-      Anuluj
-    </button>
-  </div>
-</div>
-    <script>console.log('✅ Formularz deklaracji renderowany');</script>
-
-  </div> <!-- Zamknięcie container -->
-
-  <script>console.log('✅ Container zamknięty - koniec HTML');</script>
-
-  <!-- WSZYSTKIE SKRYPTY NA KOŃCU -->
-  <script>console.log('🔵 Start ładowania skryptów JavaScript');</script>
-  
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script>console.log('✅ Bootstrap JS załadowany');</script>
-  
-  <script src="https://unpkg.com/@popperjs/core@2"></script>
-  <script>console.log('✅ Popper.js załadowany');</script>
-  
-  <script src="https://unpkg.com/tippy.js@6"></script>
-  <script>console.log('✅ Tippy.js załadowany');</script>
-  
-  <!-- Biblioteki PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script>console.log('✅ jsPDF załadowany');</script>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script>console.log('✅ html2canvas załadowany');</script>
-  
-  <!-- WAŻNE: Kolejność ma znaczenie! -->
-  <script>
-    console.log('🔵 Ładowanie plików lokalnych...');
-    console.log('📂 Próba załadowania definitions.js');
-  </script>
+  <!-- jsPDF, html2canvas, fonts.js i Tippy ładują się dopiero wtedy,
+       gdy są potrzebne (patrz loadScriptOnce w script.js) -->
   <script src="definitions.js" onerror="console.error('❌ BŁĄD: definitions.js nie załadował się!')"></script>
-  <script>console.log('✅ definitions.js załadowany (lub próba)');</script>
-  
-  <script>console.log('📂 Próba załadowania fonts.js');</script>
-  <script src="fonts.js" onerror="console.error('❌ BŁĄD: fonts.js nie załadował się!')"></script>
-  <script>console.log('✅ fonts.js załadowany (lub próba)');</script>
-  
-  <script>console.log('📂 Próba załadowania script.js');</script>
   <script src="script.js" onerror="console.error('❌ BŁĄD: script.js nie załadował się!')"></script>
-  <script>console.log('✅ script.js załadowany (lub próba)');</script>
-
-  <script>
-    console.log('🎉 KONIEC - wszystkie skrypty załadowane');
-    console.log('📋 Podsumowanie:');
-    console.log('  - Bootstrap:', typeof bootstrap !== 'undefined' ? '✅' : '❌');
-    console.log('  - jsPDF:', typeof window.jspdf !== 'undefined' ? '✅' : '❌');
-    console.log('  - html2canvas:', typeof html2canvas !== 'undefined' ? '✅' : '❌');
-    console.log('  - keywordDefinitions:', typeof keywordDefinitions !== 'undefined' ? '✅' : '❌');
-    console.log('  - registerTinosFonts:', typeof registerTinosFonts !== 'undefined' ? '✅' : '❌');
-    console.log('  - createPDFDocument:', typeof createPDFDocument !== 'undefined' ? '✅' : '❌');
-    
-    // Usuń debug banner po załadowaniu
-    setTimeout(function() {
-      const banner = document.getElementById('debugBanner');
-      if (banner) {
-        banner.style.background = '#28a745';
-        banner.textContent = '✅ Strona załadowana pomyślnie!';
-        setTimeout(function() {
-          banner.style.display = 'none';
-        }, 3000);
-      }
-    }, 1000);
-  </script>
-
 </body>
 
 </html>

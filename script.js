@@ -42,6 +42,47 @@ const STORAGE_KEYS = {
 };
 
 // -------------------------------------------------------
+// Biblioteki ładowane dopiero wtedy, gdy są potrzebne
+// -------------------------------------------------------
+// jsPDF, html2canvas i czcionki (sam fonts.js waży ok. 1,7 MB) są potrzebne
+// tylko do PDF, a Tippy tylko do dymków na komputerze. Dzięki temu strona
+// na telefonie startuje dużo szybciej.
+
+const LAZY_SCRIPTS = {
+  jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  fonts: 'fonts.js',
+  popper: 'https://unpkg.com/@popperjs/core@2',
+  tippy: 'https://unpkg.com/tippy.js@6'
+};
+const loadedScripts = {};
+
+function loadScriptOnce(src) {
+  if (!loadedScripts[src]) {
+    loadedScripts[src] = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => {
+        delete loadedScripts[src];
+        reject(new Error('Nie udało się załadować ' + src));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return loadedScripts[src];
+}
+
+function loadPdfLibraries() {
+  return Promise.all([loadScriptOnce(LAZY_SCRIPTS.jspdf), loadScriptOnce(LAZY_SCRIPTS.fonts)]);
+}
+
+async function loadTooltipLibraries() {
+  await loadScriptOnce(LAZY_SCRIPTS.popper);
+  await loadScriptOnce(LAZY_SCRIPTS.tippy);
+}
+
+// -------------------------------------------------------
 // Zapis / odczyt wyborów dań (checkboxy) per miesiąc
 // -------------------------------------------------------
 
@@ -245,7 +286,9 @@ themeToggleBtn.addEventListener('click', () => {
   localStorage.setItem('theme', newTheme);
 });
 
-const savedTheme = localStorage.getItem('theme') || 'light';
+// Bez zapisanego wyboru bierzemy motyw z ustawień telefonu/komputera
+const savedTheme = localStorage.getItem('theme') ||
+  (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 applyTheme(savedTheme);
 
 // Obsługa widoczności
@@ -412,6 +455,34 @@ generateMenuBtn.addEventListener('click', () => {
     }, 100);
   }
 });
+
+// Po wybraniu pliku menu wczytuje się od razu, bez dodatkowego kliknięcia
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
+  const title = document.getElementById('dropzoneTitle');
+  if (title) title.textContent = file ? file.name : 'Wybierz plik z jadłospisem';
+  if (file && !toggleTextareaCheckbox.checked) {
+    convertFileAndGenerateMenu();
+  }
+});
+
+// Przeciąganie pliku na pole wyboru (komputer)
+const dropzone = document.getElementById('dropzone');
+if (dropzone) {
+  ['dragenter', 'dragover'].forEach(type => dropzone.addEventListener(type, e => {
+    e.preventDefault();
+    dropzone.classList.add('is-dragover');
+  }));
+  ['dragleave', 'drop'].forEach(type => dropzone.addEventListener(type, () => {
+    dropzone.classList.remove('is-dragover');
+  }));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    if (!e.dataTransfer.files.length) return;
+    fileInput.files = e.dataTransfer.files;
+    fileInput.dispatchEvent(new Event('change'));
+  });
+}
 
 function convertFileAndGenerateMenu() {
   const file = fileInput.files[0];
@@ -873,6 +944,9 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
       }
       
       const row = menuTableBody.insertRow();
+      // Klasy dla CSS: weekendy są ukryte, poniedziałek zaczyna nowy tydzień
+      if (currentDate.getDay() === 0 || currentDate.getDay() === 6) row.classList.add('weekend-row');
+      if (currentDate.getDay() === 1) row.classList.add('week-start');
       row.insertCell().textContent = lp++;
       row.insertCell().textContent = dateKey;
       row.insertCell().textContent = dayOfWeek;
@@ -953,6 +1027,7 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
     const summaryBox = document.getElementById('summaryBox');
     if (summaryBox) summaryBox.classList.remove('d-none');
     document.getElementById('fridgeCalendarSection')?.classList.remove('d-none');
+    document.getElementById('mobileTotalBar')?.classList.remove('d-none');
 
     // Przywróć zapisane wybory użytkownika (jeśli istnieją dla tego miesiąca)
     const monthYear = getMonthYear();
@@ -1056,6 +1131,12 @@ function attachSummaryListeners() {
     totalSecondCoursesCostSpan.textContent = totalSecondCost.toFixed(2);
     totalCostAllMealsSpan.textContent = totalAllMealsCost.toFixed(2);
 
+    // Dolny pasek na telefonie
+    const mobileTotal = document.getElementById('mobileTotalCost');
+    const mobileDays = document.getElementById('mobileMealDays');
+    if (mobileTotal) mobileTotal.textContent = totalAllMealsCost.toFixed(2);
+    if (mobileDays) mobileDays.textContent = countFirst + countSecond + countCombo;
+
     const comboInfoSpan = document.getElementById('comboSelectedInfo');
     if (comboInfoSpan) {
       comboInfoSpan.textContent = countCombo > 0
@@ -1086,7 +1167,14 @@ async function attachTooltipListeners() {
   if (window.innerWidth <= 768) {
     return;
   }
-  
+
+  try {
+    await loadTooltipLibraries();
+  } catch (error) {
+    console.warn('Dymki z opisami dań niedostępne:', error);
+    return;
+  }
+
   const debugEnabled = toggleDebugCheckbox.checked;
   const debugLog = [];
   const elements = document.querySelectorAll('.dish-name');
@@ -1365,6 +1453,12 @@ function attachSelectAllListeners() {
 // ============================================
 
 generateDeclarationBtn.addEventListener('click', generateDeclaration);
+
+// Przycisk "Deklaracja" z dolnego paska na telefonie
+function goToDeclaration() {
+  generateDeclaration();
+  document.getElementById('declarationCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 function generateDeclaration() {
   const rows = [...document.querySelectorAll('#menuTable tbody tr')];
@@ -2049,6 +2143,9 @@ function generateFullHTMLEmail(childName, childClass, monthYear, firstPrice, sec
 // ============================================
 
 function showPDFForm() {
+  // Biblioteki PDF pobieramy w tle, zanim użytkownik kliknie "Generuj"
+  loadPdfLibraries().catch(() => {});
+  loadScriptOnce(LAZY_SCRIPTS.html2canvas).catch(() => {});
   syncFormData('email'); // Synchronizuj dane z EMAIL do PDF
   document.getElementById('pdfFormSection').classList.remove('d-none');
   document.getElementById('emailFormSection').classList.add('d-none');
@@ -2201,18 +2298,28 @@ function initSignatureCanvas() {
   }
 }
 
+// Pozycja kursora/palca w układzie współrzędnych canvasa. Na telefonie
+// canvas jest zmniejszony przez CSS, więc trzeba przeliczyć skalę.
+function getSignaturePoint(clientX, clientY) {
+  const rect = signatureCanvas.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left) * (signatureCanvas.width / rect.width),
+    y: (clientY - rect.top) * (signatureCanvas.height / rect.height)
+  };
+}
+
 function startDrawing(e) {
   isDrawing = true;
-  const rect = signatureCanvas.getBoundingClientRect();
+  const point = getSignaturePoint(e.clientX, e.clientY);
   signatureCtx.beginPath();
-  signatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+  signatureCtx.moveTo(point.x, point.y);
 }
 
 function draw(e) {
   if (!isDrawing) return;
-  
-  const rect = signatureCanvas.getBoundingClientRect();
-  signatureCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+
+  const point = getSignaturePoint(e.clientX, e.clientY);
+  signatureCtx.lineTo(point.x, point.y);
   signatureCtx.stroke();
 }
 
@@ -2231,19 +2338,19 @@ function stopDrawing() {
 function handleTouchStart(e) {
   e.preventDefault();
   const touch = e.touches[0];
-  const rect = signatureCanvas.getBoundingClientRect();
+  const point = getSignaturePoint(touch.clientX, touch.clientY);
   isDrawing = true;
   signatureCtx.beginPath();
-  signatureCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+  signatureCtx.moveTo(point.x, point.y);
 }
 
 function handleTouchMove(e) {
   e.preventDefault();
   if (!isDrawing) return;
-  
+
   const touch = e.touches[0];
-  const rect = signatureCanvas.getBoundingClientRect();
-  signatureCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+  const point = getSignaturePoint(touch.clientX, touch.clientY);
+  signatureCtx.lineTo(point.x, point.y);
   signatureCtx.stroke();
 }
 
@@ -2268,66 +2375,26 @@ function changeSignatureThickness(thickness) {
 // CZĘŚĆ 12: TOAST NOTIFICATIONS
 // ============================================
 
+// Wygląd i animacje powiadomień są w styles.css (.app-toast).
+// Kilka powiadomień naraz układa się jedno pod drugim w #toastStack.
 function showSimpleToast(message, type = 'info') {
-  const colors = {
-    success: '#28a745',
-    info: '#17a2b8',
-    warning: '#ffc107',
-    error: '#dc3545'
-  };
-  
+  let stack = document.getElementById('toastStack');
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.id = 'toastStack';
+    stack.setAttribute('aria-live', 'polite');
+    document.body.appendChild(stack);
+  }
+
   const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    background: ${colors[type]};
-    color: white;
-    padding: 15px 25px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 10000;
-    animation: slideIn 0.3s ease-out;
-    max-width: 400px;
-  `;
+  toast.className = `app-toast app-toast-${type}`;
   toast.textContent = message;
-  
-  document.body.appendChild(toast);
-  
+  stack.appendChild(toast);
+
   setTimeout(() => {
-    toast.style.animation = 'slideOut 0.3s ease-in';
+    toast.classList.add('app-toast-hide');
     setTimeout(() => toast.remove(), 300);
   }, 4000);
-}
-
-// Animacje CSS dla toastów
-if (!document.getElementById('toastAnimations')) {
-  const style = document.createElement('style');
-  style.id = 'toastAnimations';
-  style.textContent = `
-    @keyframes slideIn {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-    }
-  `;
-  document.head.appendChild(style);
 }
 
 // ============================================
@@ -2335,6 +2402,7 @@ if (!document.getElementById('toastAnimations')) {
 // ============================================
 
 async function createPDFDocument(childName, childClass, monthYear, firstPrice, secondPrice, totalPrice, healthNotes, table, signatureImage) {
+  await Promise.all([loadPdfLibraries(), loadScriptOnce(LAZY_SCRIPTS.html2canvas)]);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({
     orientation: 'p',
@@ -2954,6 +3022,7 @@ async function downloadFridgeCalendar(format) {
     } else if (format === 'docx') {
       downloadBlob(new Blob([buildFridgeCalendarDocx(cal)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), fileName);
     } else if (format === 'pdf') {
+      showSimpleToast('📄 Generowanie PDF...', 'info');
       const doc = await buildFridgeCalendarPdf(cal);
       doc.save(fileName);
     }
@@ -3241,6 +3310,7 @@ function createZip(files) {
 }
 
 async function buildFridgeCalendarPdf(cal) {
+  await loadPdfLibraries();
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
   if (typeof registerTinosFonts === 'function') {
