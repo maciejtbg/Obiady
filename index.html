@@ -291,6 +291,19 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
       </div>
     </div>
 
+    <!-- Kalendarz na lodówkę -->
+    <div id="fridgeCalendarSection" class="card d-none my-3">
+      <div class="card-body">
+        <h5 class="card-title">🗓️ Kalendarz na lodówkę</h5>
+        <p class="text-muted mb-3">Cały miesiąc z zamówionymi daniami. Od razu widać, w które dni dziecko potrzebuje kanapki do szkoły.</p>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-outline-secondary" onclick="downloadFridgeCalendar('txt')">📝 Pobierz TXT</button>
+          <button class="btn btn-outline-primary" onclick="downloadFridgeCalendar('docx')">📘 Pobierz DOCX</button>
+          <button class="btn btn-outline-danger" onclick="downloadFridgeCalendar('pdf')">📄 Pobierz PDF</button>
+        </div>
+      </div>
+    </div>
+
     <!-- KROK 3: Generowanie tabeli -->
     <button id="generateDeclarationBtn" class="btn btn-warning my-3">
       📊 Krok 3: Generuj tabelę do deklaracji

@@ -952,6 +952,7 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
     document.getElementById('summaryMonth') && (document.getElementById('summaryMonth').textContent = monthName);
     const summaryBox = document.getElementById('summaryBox');
     if (summaryBox) summaryBox.classList.remove('d-none');
+    document.getElementById('fridgeCalendarSection')?.classList.remove('d-none');
 
     // Przywróć zapisane wybory użytkownika (jeśli istnieją dla tego miesiąca)
     const monthYear = getMonthYear();
@@ -2920,6 +2921,465 @@ function updateMobileButtonState(column) {
   }, 30000);
   
 })();
+
+// ============================================
+// CZĘŚĆ 16: KALENDARZ NA LODÓWKĘ (TXT, DOCX, PDF)
+// ============================================
+// Miesięczny kalendarz dni szkolnych (pon-pt) z zamówionymi daniami.
+// Na pierwszy rzut oka widać, kiedy dziecko je obiad w szkole,
+// a kiedy trzeba mu spakować kanapkę.
+
+const FRIDGE_STATUSES = {
+  full:     { label: 'ZUPA + DRUGIE', legend: 'zupa i drugie danie',         fill: 'D4EDDA', color: '155724' },
+  main:     { label: 'DRUGIE DANIE',  legend: 'tylko drugie danie',          fill: 'D1ECF1', color: '0C5460' },
+  soup:     { label: 'TYLKO ZUPA',    legend: 'tylko zupa',                  fill: 'FFF3CD', color: '856404' },
+  sandwich: { label: 'KANAPKA',       legend: 'brak obiadu, spakuj kanapkę', fill: 'F8D7DA', color: '721C24' },
+  none:     { label: 'BRAK OBIADÓW',  legend: 'brak obiadów w jadłospisie',  fill: 'E9ECEF', color: '495057' }
+};
+
+const FRIDGE_WEEKDAYS = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek'];
+
+async function downloadFridgeCalendar(format) {
+  const cal = collectFridgeCalendar();
+  if (!cal) {
+    alert('❌ Najpierw wczytaj jadłospis i wybierz obiady!');
+    return;
+  }
+
+  try {
+    const fileName = getFridgeCalendarFileName(cal, format);
+    if (format === 'txt') {
+      // BOM, żeby Notatnik na pewno rozpoznał polskie znaki
+      downloadBlob(new Blob(['﻿' + buildFridgeCalendarText(cal)], { type: 'text/plain;charset=utf-8' }), fileName);
+    } else if (format === 'docx') {
+      downloadBlob(new Blob([buildFridgeCalendarDocx(cal)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), fileName);
+    } else if (format === 'pdf') {
+      const doc = await buildFridgeCalendarPdf(cal);
+      doc.save(fileName);
+    }
+    showSimpleToast('✅ Kalendarz pobrany!', 'success');
+  } catch (error) {
+    console.error('Błąd generowania kalendarza:', error);
+    showSimpleToast('❌ Błąd podczas generowania kalendarza', 'error');
+  }
+}
+
+// Zbiera z tabeli #menuTable stan każdego dnia roboczego i nazwy zamówionych
+// dań, pogrupowane w tygodnie po 5 dni (null = dzień spoza miesiąca).
+function collectFridgeCalendar() {
+  const rows = [...document.querySelectorAll('#menuTable tbody tr')];
+  const monthYear = getMonthYear();
+  if (!rows.length || !monthYear) return null;
+
+  // Rok bierzemy z getMonthYear(), żeby zgadzał się z deklaracją
+  const year = parseInt(monthYear.split(' ').pop(), 10);
+  const weeks = [];
+  const counts = { full: 0, main: 0, soup: 0, sandwich: 0, none: 0 };
+  let week = null;
+  let lastWeekday = 0;
+
+  rows.forEach(row => {
+    const dateKey = (row.cells[1]?.textContent || '').trim();
+    const [dd, mm] = dateKey.split('.').map(Number);
+    if (!dd || !mm) return;
+    const date = new Date(year, mm - 1, dd);
+    const weekday = date.getDay();
+    if (weekday === 0 || weekday === 6) return;
+
+    const checkboxes = row.querySelectorAll('input[type="checkbox"]');
+    const soupChecked = !!checkboxes[0]?.checked;
+    const mainChecked = !!checkboxes[1]?.checked;
+    let status = 'sandwich';
+    if (row.classList.contains('table-secondary')) status = 'none';
+    else if (soupChecked && mainChecked) status = 'full';
+    else if (mainChecked) status = 'main';
+    else if (soupChecked) status = 'soup';
+    counts[status]++;
+
+    if (!week || weekday <= lastWeekday) {
+      week = [null, null, null, null, null];
+      weeks.push(week);
+    }
+    lastWeekday = weekday;
+
+    week[weekday - 1] = {
+      date,
+      dateKey,
+      status,
+      soup: soupChecked ? row.cells[3].textContent.trim() : '',
+      main: mainChecked ? row.cells[5].textContent.trim() : ''
+    };
+  });
+
+  if (!weeks.length) return null;
+
+  const childName = (document.getElementById('childName')?.value || document.getElementById('childNamePDF')?.value || '').trim();
+  const childClass = (document.getElementById('childClass')?.value || document.getElementById('childClassPDF')?.value || '').trim();
+  return { monthYear, childName, childClass, weeks, counts };
+}
+
+function getFridgeCalendarSubtitle(cal) {
+  return [cal.childName, cal.childClass ? `klasa ${cal.childClass}` : ''].filter(Boolean).join(', ');
+}
+
+function formatDaysCount(count) {
+  return `${count} ${count === 1 ? 'dzień' : 'dni'}`;
+}
+
+// Format: Kalendarz_obiadow_Imię_NAZWISKO_WRZESIEŃ_2026.pdf
+function getFridgeCalendarFileName(cal, extension) {
+  const clean = text => text.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, '');
+  const nameParts = cal.childName.split(/\s+/).filter(Boolean);
+  const parts = ['Kalendarz_obiadow'];
+  if (nameParts.length) parts.push(clean(nameParts[0]));
+  if (nameParts.length > 1) parts.push(clean(nameParts.slice(1).join('')).toUpperCase());
+  parts.push(cal.monthYear.replace(/\s+/g, '_'));
+  return parts.filter(Boolean).join('_') + '.' + extension;
+}
+
+function downloadBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function buildFridgeCalendarText(cal) {
+  const indent = ' '.repeat(13);
+  const lines = [`KALENDARZ OBIADÓW: ${cal.monthYear}`];
+  const subtitle = getFridgeCalendarSubtitle(cal);
+  if (subtitle) lines.push(subtitle);
+
+  lines.push('', 'Legenda:');
+  Object.values(FRIDGE_STATUSES).forEach(s => lines.push(`  ${s.label.padEnd(15)}${s.legend}`));
+
+  cal.weeks.forEach((week, index) => {
+    const days = week.filter(Boolean);
+    lines.push('', `TYDZIEŃ ${index + 1} (${days[0].dateKey} do ${days[days.length - 1].dateKey})`);
+    days.forEach(day => {
+      const weekday = getDayOfWeekPL(day.date.getDay(), true).padEnd(3);
+      lines.push(`  ${weekday} ${day.dateKey}  ${FRIDGE_STATUSES[day.status].label}`);
+      if (day.soup) lines.push(`${indent}zupa: ${day.soup}`);
+      if (day.main) lines.push(`${indent}drugie danie: ${day.main}`);
+    });
+  });
+
+  lines.push('', 'PODSUMOWANIE');
+  Object.entries(FRIDGE_STATUSES).forEach(([key, s]) => {
+    if (cal.counts[key]) lines.push(`  ${s.label.padEnd(15)}${formatDaysCount(cal.counts[key])}`);
+  });
+
+  return lines.join('\r\n') + '\r\n';
+}
+
+// DOCX to archiwum ZIP z kilkoma plikami XML. Składamy je ręcznie,
+// żeby nie dociągać kolejnej biblioteki z CDN.
+function buildFridgeCalendarDocx(cal) {
+  const W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  const REL_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
+  const OFFICE_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const COL_W = 3140; // 5 kolumn na szerokość A4 w poziomie, w twipach
+
+  const esc = text => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const run = (text, { bold = false, size = 20, color = '', fill = '' } = {}) =>
+    `<w:r><w:rPr>${bold ? '<w:b/>' : ''}${color ? `<w:color w:val="${color}"/>` : ''}<w:sz w:val="${size}"/>` +
+    `${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}</w:rPr>` +
+    `<w:t xml:space="preserve">${esc(text)}</w:t></w:r>`;
+  const para = (runs, { align = '', before = 0, after = 0 } = {}) =>
+    `<w:p><w:pPr><w:spacing w:before="${before}" w:after="${after}"/>${align ? `<w:jc w:val="${align}"/>` : ''}</w:pPr>${runs}</w:p>`;
+  const cell = (content, fill = '') =>
+    `<w:tc><w:tcPr><w:tcW w:w="${COL_W}" w:type="dxa"/>` +
+    `${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}</w:tcPr>${content || para('')}</w:tc>`;
+
+  const dayCell = day => {
+    if (!day) return cell('');
+    const s = FRIDGE_STATUSES[day.status];
+    let content = para(run(String(day.date.getDate()), { bold: true, size: 28 }));
+    if (day.soup || day.main) {
+      content += para(run(s.label, { bold: true, color: s.color }), { after: 60 });
+      if (day.soup) content += para(run('Zupa: ', { bold: true, size: 16 }) + run(day.soup, { size: 16 }));
+      if (day.main) content += para(run('Drugie: ', { bold: true, size: 16 }) + run(day.main, { size: 16 }));
+    } else {
+      // Kanapka albo brak obiadów: sam duży napis
+      const big = day.status === 'sandwich';
+      content += para(run(s.label, { bold: big, size: big ? 36 : 20, color: s.color }), { align: 'center', before: 120 });
+    }
+    return cell(content, s.fill);
+  };
+
+  const headerRow = '<w:tr><w:trPr><w:tblHeader/></w:trPr>' +
+    FRIDGE_WEEKDAYS.map(name => cell(para(run(name, { bold: true, size: 22, color: 'FFFFFF' }), { align: 'center' }), '343A40')).join('') +
+    '</w:tr>';
+  // Wysokość wiersza dobrana tak, żeby cały miesiąc zmieścił się na jednej stronie
+  const rowHeight = Math.min(2200, Math.floor(8200 / cal.weeks.length));
+  const weekRows = cal.weeks.map(week =>
+    `<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="${rowHeight}" w:hRule="atLeast"/></w:trPr>${week.map(dayCell).join('')}</w:tr>`
+  ).join('');
+
+  const border = side => `<w:${side} w:val="single" w:sz="6" w:space="0" w:color="ADB5BD"/>`;
+  const table = '<w:tbl><w:tblPr>' +
+    `<w:tblW w:w="${COL_W * 5}" w:type="dxa"/>` +
+    `<w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('')}</w:tblBorders>` +
+    '<w:tblLayout w:type="fixed"/>' +
+    '<w:tblCellMar><w:top w:w="60" w:type="dxa"/><w:left w:w="100" w:type="dxa"/>' +
+    '<w:bottom w:w="60" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar>' +
+    `</w:tblPr><w:tblGrid>${`<w:gridCol w:w="${COL_W}"/>`.repeat(5)}</w:tblGrid>${headerRow}${weekRows}</w:tbl>`;
+
+  const subtitle = getFridgeCalendarSubtitle(cal);
+  const legend = para(Object.entries(FRIDGE_STATUSES)
+    .filter(([key]) => cal.counts[key])
+    .map(([key, s]) =>
+      run(` ${s.label} `, { bold: true, size: 18, color: s.color, fill: s.fill }) +
+      run(` ${s.legend}: ${formatDaysCount(cal.counts[key])}     `, { size: 18 }))
+    .join(''), { before: 120 });
+
+  const body =
+    para(run(`Kalendarz obiadów: ${cal.monthYear}`, { bold: true, size: 36 }), { after: subtitle ? 0 : 120 }) +
+    (subtitle ? para(run(subtitle, { size: 24 }), { after: 120 }) : '') +
+    table + legend;
+
+  const documentXml = `${XML_HEADER}<w:document ${W_NS}><w:body>${body}` +
+    '<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>' +
+    '<w:pgMar w:top="567" w:right="567" w:bottom="567" w:left="567" w:header="0" w:footer="0" w:gutter="0"/>' +
+    '</w:sectPr></w:body></w:document>';
+
+  const stylesXml = `${XML_HEADER}<w:styles ${W_NS}><w:docDefaults>` +
+    '<w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Calibri"/>' +
+    '<w:sz w:val="20"/><w:szCs w:val="20"/><w:lang w:val="pl-PL"/></w:rPr></w:rPrDefault>' +
+    '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault>' +
+    '</w:docDefaults></w:styles>';
+
+  return createZip([
+    { name: '[Content_Types].xml', content: XML_HEADER +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+      '</Types>' },
+    { name: '_rels/.rels', content: XML_HEADER +
+      `<Relationships xmlns="${REL_NS}"><Relationship Id="rId1" Type="${OFFICE_REL}/officeDocument" Target="word/document.xml"/></Relationships>` },
+    { name: 'word/_rels/document.xml.rels', content: XML_HEADER +
+      `<Relationships xmlns="${REL_NS}"><Relationship Id="rId1" Type="${OFFICE_REL}/styles" Target="styles.xml"/></Relationships>` },
+    { name: 'word/document.xml', content: documentXml },
+    { name: 'word/styles.xml', content: stylesXml }
+  ]);
+}
+
+// Minimalny zapis ZIP bez kompresji (metoda "stored"), w zupełności
+// wystarcza dla pliku DOCX. Zwraca Uint8Array.
+function createZip(files) {
+  const encoder = new TextEncoder();
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    return c >>> 0;
+  });
+  const crc32 = bytes => {
+    let crc = 0xFFFFFFFF;
+    for (const b of bytes) crc = crcTable[(crc ^ b) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  };
+
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  files.forEach(({ name, content }) => {
+    const nameBytes = encoder.encode(name);
+    const data = encoder.encode(content);
+    const crc = crc32(data);
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);  // sygnatura nagłówka pliku
+    local.setUint16(4, 20, true);          // wersja potrzebna do rozpakowania
+    local.setUint16(6, 0x0800, true);      // nazwy plików w UTF-8
+    local.setUint16(12, 0x0021, true);     // data 1980-01-01
+    local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, data.length, true);
+    local.setUint16(26, nameBytes.length, true);
+    localParts.push(new Uint8Array(local.buffer), nameBytes, data);
+
+    const central = new DataView(new ArrayBuffer(46));
+    central.setUint32(0, 0x02014b50, true); // sygnatura wpisu katalogu centralnego
+    central.setUint16(4, 20, true);
+    central.setUint16(6, 20, true);
+    central.setUint16(8, 0x0800, true);
+    central.setUint16(14, 0x0021, true);
+    central.setUint32(16, crc, true);
+    central.setUint32(20, data.length, true);
+    central.setUint32(24, data.length, true);
+    central.setUint16(28, nameBytes.length, true);
+    central.setUint32(42, offset, true);
+    centralParts.push(new Uint8Array(central.buffer), nameBytes);
+
+    offset += 30 + nameBytes.length + data.length;
+  });
+
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);       // sygnatura końca archiwum
+  end.setUint16(8, files.length, true);
+  end.setUint16(10, files.length, true);
+  end.setUint32(12, centralSize, true);
+  end.setUint32(16, offset, true);
+
+  const parts = [...localParts, ...centralParts, new Uint8Array(end.buffer)];
+  const zip = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let position = 0;
+  parts.forEach(part => {
+    zip.set(part, position);
+    position += part.length;
+  });
+  return zip;
+}
+
+async function buildFridgeCalendarPdf(cal) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
+  if (typeof registerTinosFonts === 'function') {
+    await registerTinosFonts(doc);
+  }
+
+  const rgb = hex => [0, 2, 4].map(i => parseInt(hex.substr(i, 2), 16));
+  const PAGE_W = 297;
+  const PAGE_H = 210;
+  const M = 10;
+  const colW = (PAGE_W - 2 * M) / 5;
+
+  // Nagłówek: miesiąc po lewej, dziecko po prawej
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('Tinos', 'bold');
+  doc.setFontSize(20);
+  doc.text(`Kalendarz obiadów: ${cal.monthYear}`, M, 16);
+  const subtitle = getFridgeCalendarSubtitle(cal);
+  if (subtitle) {
+    doc.setFont('Tinos', 'normal');
+    doc.setFontSize(13);
+    doc.text(subtitle, PAGE_W - M, 16, { align: 'right' });
+  }
+
+  // Wiersz z nazwami dni tygodnia
+  const headerY = 21;
+  const headerH = 8;
+  doc.setFillColor(52, 58, 64);
+  doc.rect(M, headerY, PAGE_W - 2 * M, headerH, 'F');
+  doc.setFont('Tinos', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(255, 255, 255);
+  FRIDGE_WEEKDAYS.forEach((name, i) => {
+    doc.text(name, M + colW * i + colW / 2, headerY + 5.6, { align: 'center' });
+  });
+
+  // Siatka: jeden wiersz na tydzień
+  const gridY = headerY + headerH;
+  const legendH = 12;
+  const rowH = Math.min(38, (PAGE_H - M - legendH - gridY) / cal.weeks.length);
+  doc.setDrawColor(173, 181, 189);
+  doc.setLineWidth(0.3);
+  cal.weeks.forEach((week, w) => {
+    week.forEach((day, d) => {
+      const x = M + colW * d;
+      const y = gridY + rowH * w;
+      if (!day) {
+        doc.rect(x, y, colW, rowH, 'S');
+        return;
+      }
+      doc.setFillColor(...rgb(FRIDGE_STATUSES[day.status].fill));
+      doc.rect(x, y, colW, rowH, 'FD');
+      drawFridgePdfDay(doc, day, x, y, colW, rowH, rgb);
+    });
+  });
+
+  // Legenda z liczbą dni
+  const legendY = gridY + rowH * cal.weeks.length + 8;
+  let legendX = M;
+  doc.setFontSize(11);
+  Object.entries(FRIDGE_STATUSES).forEach(([key, s]) => {
+    if (!cal.counts[key]) return;
+    doc.setFillColor(...rgb(s.fill));
+    doc.rect(legendX, legendY - 3.8, 5, 5, 'FD');
+    legendX += 7;
+    doc.setFont('Tinos', 'bold');
+    doc.setTextColor(...rgb(s.color));
+    doc.text(s.label, legendX, legendY);
+    legendX += doc.getTextWidth(s.label);
+    doc.setFont('Tinos', 'normal');
+    doc.setTextColor(0, 0, 0);
+    const count = `: ${formatDaysCount(cal.counts[key])}`;
+    doc.text(count, legendX, legendY);
+    legendX += doc.getTextWidth(count) + 9;
+  });
+
+  return doc;
+}
+
+function drawFridgePdfDay(doc, day, x, y, w, h, rgb) {
+  const s = FRIDGE_STATUSES[day.status];
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('Tinos', 'bold');
+  doc.setFontSize(16);
+  doc.text(String(day.date.getDate()), x + 2.5, y + 7);
+
+  doc.setTextColor(...rgb(s.color));
+  if (!day.soup && !day.main) {
+    // Kanapka albo brak obiadów: duży napis na środku komórki
+    const big = day.status === 'sandwich';
+    doc.setFont('Tinos', big ? 'bold' : 'normal');
+    doc.setFontSize(big ? 20 : 12);
+    doc.text(s.label, x + w / 2, y + h / 2 + 4, { align: 'center' });
+    return;
+  }
+
+  doc.setFontSize(10);
+  doc.text(s.label, x + w - 2.5, y + 6.5, { align: 'right' });
+
+  // Nazwy dań: zmniejszamy czcionkę, aż tekst zmieści się w komórce
+  const dishes = [];
+  if (day.soup) dishes.push(['Zupa: ', day.soup]);
+  if (day.main) dishes.push(['Drugie: ', day.main]);
+  const availableH = h - 12;
+  doc.setFont('Tinos', 'normal');
+  let fontSize = 10.5;
+  let lineH;
+  let lines;
+  do {
+    fontSize -= 0.5;
+    doc.setFontSize(fontSize);
+    lineH = fontSize * 0.3528 * 1.2;
+    lines = dishes.flatMap(([prefix, name]) =>
+      doc.splitTextToSize(prefix + name, w - 6).map((text, i) => ({ text, prefix: i === 0 ? prefix : '' })));
+  } while (lines.length * lineH > availableH && fontSize > 6.5);
+
+  const maxLines = Math.floor(availableH / lineH);
+  if (lines.length > maxLines) {
+    lines = lines.slice(0, maxLines);
+    const last = lines[maxLines - 1];
+    last.text = last.text.replace(/\s*\S*$/, '') + '...';
+  }
+
+  doc.setTextColor(33, 37, 41);
+  lines.forEach((line, i) => {
+    const lineY = y + 10 + lineH * (i + 0.85);
+    let text = line.text;
+    let textX = x + 2.5;
+    if (line.prefix && text.startsWith(line.prefix)) {
+      doc.setFont('Tinos', 'bold');
+      doc.text(line.prefix, textX, lineY);
+      textX += doc.getTextWidth(line.prefix);
+      text = text.slice(line.prefix.length);
+    }
+    doc.setFont('Tinos', 'normal');
+    doc.text(text, textX, lineY);
+  });
+}
 
 // ============================================
 // INICJALIZACJA - Czeka na załadowanie DOM
