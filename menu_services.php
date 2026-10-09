@@ -265,6 +265,9 @@ function ms_convert_menu($path, array $keys) {
         $result = $tryText($ocr($type), 'zdjecie->ocr');
     } elseif ($type === 'txt') {
         $result = $tryText(file_get_contents($path), 'tekst');
+        // Zwykły plik tekstowy bez rozpoznanego jadłospisu to błąd, a nie
+        // materiał dla starego parsera (nie trafia też do historii)
+        if (!$result) $legacyText = null;
     }
 
     if ($result && $notes) {
