@@ -131,7 +131,7 @@ Zasady:
 - Przy zestawie (danie główne, ziemniaki, surówka) opisz przede wszystkim danie główne; dodatki wspomnij krótko tylko wtedy, gdy wymagają wyjaśnienia.
 - Nazwy mogą mieć literówki, brakujące polskie znaki albo sklejone słowa. Odczytaj najbardziej prawdopodobne danie. Nazwy żartobliwe dla dzieci (np. "zupa Shrekowa") opisz po tym, co zwykle oznaczają. Pisz, że nazwa jest żartobliwa, tylko gdy nawiązuje do bajki albo postaci; "zupa nic" to tradycyjna nazwa.
 - Nie zaczynaj od nazwy dania. Nie wymyślaj alergenów, kaloryczności ani pochodzenia; typowy skład opisz słowem "zwykle".
-- Bez przymiotników reklamowych (pyszny, idealny, wyśmienity, soczysty), bez emoji, bez myślników.
+- Bez przymiotników reklamowych (pyszny, idealny, wyśmienity, soczysty), bez emoji, bez myślników między częściami zdania. Łącznik w wyrazach złożonych (mięsno-warzywny) jest poprawny.
 - Jeśli tekst nie jest nazwą potrawy (np. "dzień wolny", "wycieczka", "deser"), zwróć pusty opis.
 Przykłady:
 [drugie danie] Kotlet pożarski, ziemniaki, surówka -> "Panierowany kotlet z mielonego mięsa drobiowego, smażony na złoto, podawany z gotowanymi ziemniakami i surówką ze świeżych warzyw."
@@ -220,9 +220,10 @@ function dd_ai_describe(array $items, array $config, &$log, &$model) {
         $data = json_decode($response, true);
         if ($status !== 200) {
             $message = $data['error']['message'] ?? ('HTTP ' . $status);
-            $log[] = "AI $candidate: HTTP $status " . mb_substr($message, 0, 160);
-            // Model wycofany albo niedostępny w planie: próbujemy następnego z listy
-            if (in_array($status, [400, 403, 404], true) && stripos($message, 'model') !== false) continue;
+            $log[] = "AI $candidate: HTTP $status " . mb_substr(preg_replace('/ in organization `[^`]*`/', '', $message), 0, 160);
+            // Limit na minutę dotyczy jednego modelu, a model wycofany albo spoza planu
+            // też nie blokuje pozostałych: próbujemy następnego z listy
+            if ($status === 429 || (in_array($status, [400, 403, 404], true) && stripos($message, 'model') !== false)) continue;
             return [];
         }
         $parsed = dd_ai_parse($data['choices'][0]['message']['content'] ?? '');
@@ -231,6 +232,7 @@ function dd_ai_describe(array $items, array $config, &$log, &$model) {
             return [];
         }
         $model = $candidate;
+        if (isset($data['usage']['total_tokens'])) $log[] = "AI $candidate: {$data['usage']['total_tokens']} tokenów";
         // Pominięte id: model uznał, że to nie potrawa (inaczej pytalibyśmy o nie przy każdym wyświetleniu)
         return array_intersect_key($parsed, $items) + array_fill_keys(array_keys($items), '');
     }
