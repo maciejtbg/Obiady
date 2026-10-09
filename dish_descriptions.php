@@ -324,53 +324,46 @@ function dd_wiki_summary($extract) {
     return dd_tidy_text($summary);
 }
 
-// Pobiera wstępy haseł dla wielu tytułów naraz (po 20, tyle zwraca API), równolegle
+// Pobiera wstępy haseł dla wielu tytułów naraz (po 20, tyle zwraca API).
+// Po kolei, bo hosting (InfinityFree) wyłącza curl_multi_exec.
 function dd_wiki_fetch(array $titles, &$log) {
-    $handles = [];
-    $chunks = array_chunk($titles, 20);
-    $multi = curl_multi_init();
-    foreach ($chunks as $index => $chunk) {
+    $pages = [];
+    $started = microtime(true);
+    foreach (array_chunk($titles, 20) as $chunk) {
+        if (microtime(true) - $started > 15) {
+            $log[] = 'Wikipedia: przerwano, zbyt długie oczekiwanie';
+            break;
+        }
         $url = DD_WIKI_API . '?' . http_build_query([
             'action' => 'query', 'prop' => 'extracts|pageprops', 'exintro' => 1, 'explaintext' => 1,
             'exchars' => 700, 'exlimit' => 20, 'redirects' => 1, 'format' => 'json', 'formatversion' => 2,
             'titles' => implode('|', $chunk),
         ]);
         $ch = curl_init($url);
-        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_USERAGENT => DD_USER_AGENT, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_TIMEOUT => 12]);
-        curl_multi_add_handle($multi, $ch);
-        $handles[$index] = $ch;
-    }
-    do {
-        $status = curl_multi_exec($multi, $running);
-        if ($running) curl_multi_select($multi, 1.0);
-    } while ($running && $status === CURLM_OK);
-
-    $pages = [];
-    foreach ($handles as $index => $ch) {
-        $data = json_decode((string)curl_multi_getcontent($ch), true);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_USERAGENT => DD_USER_AGENT, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_TIMEOUT => 10]);
+        $data = json_decode((string)curl_exec($ch), true);
         if (!isset($data['query'])) {
             $log[] = 'Wikipedia: brak odpowiedzi (' . (curl_error($ch) ?: 'HTTP ' . curl_getinfo($ch, CURLINFO_HTTP_CODE)) . ')';
-        } else {
-            // Tytuł z zapytania -> tytuł hasła po normalizacji i przekierowaniu
-            $target = [];
-            foreach ($data['query']['normalized'] ?? [] as $n) $target[$n['from']] = $n['to'];
-            $redirect = [];
-            foreach ($data['query']['redirects'] ?? [] as $r) $redirect[$r['from']] = $r['to'];
-            $byTitle = [];
-            foreach ($data['query']['pages'] ?? [] as $page) {
-                if (!empty($page['missing']) || isset($page['pageprops']['disambiguation']) || empty($page['extract'])) continue;
-                $byTitle[$page['title']] = $page;
-            }
-            foreach ($chunks[$index] as $asked) {
-                $title = $target[$asked] ?? $asked;
-                $title = $redirect[$title] ?? $title;
-                if (isset($byTitle[$title])) $pages[$asked] = $byTitle[$title];
-            }
+            curl_close($ch);
+            continue;
         }
-        curl_multi_remove_handle($multi, $ch);
         curl_close($ch);
+        // Tytuł z zapytania -> tytuł hasła po normalizacji i przekierowaniu
+        $target = [];
+        foreach ($data['query']['normalized'] ?? [] as $n) $target[$n['from']] = $n['to'];
+        $redirect = [];
+        foreach ($data['query']['redirects'] ?? [] as $r) $redirect[$r['from']] = $r['to'];
+        $byTitle = [];
+        foreach ($data['query']['pages'] ?? [] as $page) {
+            if (!empty($page['missing']) || isset($page['pageprops']['disambiguation']) || empty($page['extract'])) continue;
+            $byTitle[$page['title']] = $page;
+        }
+        foreach ($chunk as $asked) {
+            $title = $target[$asked] ?? $asked;
+            $title = $redirect[$title] ?? $title;
+            if (isset($byTitle[$title])) $pages[$asked] = $byTitle[$title];
+        }
     }
-    curl_multi_close($multi);
     return $pages;
 }
 

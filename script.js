@@ -1256,10 +1256,10 @@ async function fetchDishDescriptions(dishes) {
       const response = await fetch('dish_info.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dishes: chunk })
+        body: JSON.stringify({ dishes: chunk, debug: toggleDebugCheckbox.checked })
       });
       const data = await response.json();
-      if (!data.Successful) throw new Error(data.Error || 'brak odpowiedzi');
+      if (!data.Successful) throw new Error(data.Detail || data.Error || 'brak odpowiedzi');
       chunk.forEach(dish => dishDescriptions.set(dish.name, data.Descriptions[dish.name] || { text: null, source: 'brak' }));
       Object.entries(data.Stats || {}).forEach(([source, count]) => { stats[source] = (stats[source] || 0) + count; });
     } catch (error) {

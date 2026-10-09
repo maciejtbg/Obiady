@@ -37,7 +37,10 @@ try {
     echo json_encode(['Successful' => true, 'Descriptions' => (object)$descriptions, 'Stats' => $stats, 'Log' => $log], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     error_log('dish_info: ' . $e->getMessage());
-    echo json_encode(['Successful' => false, 'Error' => 'Nie udało się pobrać opisów dań.'], JSON_UNESCAPED_UNICODE);
+    $response = ['Successful' => false, 'Error' => 'Nie udało się pobrać opisów dań.'];
+    // Szczegóły błędu tylko w trybie debugowania strony
+    if (!empty($input['debug'])) $response['Detail'] = get_class($e) . ': ' . $e->getMessage() . ' (' . basename($e->getFile()) . ':' . $e->getLine() . ')';
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
 }
 
 if ($conn) $conn->close();
