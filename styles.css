@@ -1756,6 +1756,11 @@ body.dark-theme .app-toast {
   }
 }
 
+/* Dymek z opisem dania (Tippy): dopisek o źródle opisu jest przygaszony */
+.tippy-box .dish-tip-note {
+  opacity: 0.7;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

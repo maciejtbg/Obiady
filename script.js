@@ -1201,48 +1201,78 @@ rows.forEach(row => {
   updateSummary();
 }
 
-// Małe litery bez polskich znaków ("Naleśniki" -> "nalesniki")
-function foldText(text) {
-  return String(text).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
+// -------------------------------------------------------
+// Opisy dań w dymkach
+// -------------------------------------------------------
+// Opisy daje dish_info.php: najpierw z bazy, a dania jeszcze nieopisane
+// opisuje AI (albo słownik i Wikipedia) i zapisuje w bazie, więc o każde
+// danie pytamy zewnętrzną usługę tylko raz.
+
+const dishDescriptions = new Map(); // nazwa dania z tabeli -> { text, source }
+const pendingDishNames = new Set();
+const DISH_INFO_CHUNK = 15;
+const DISH_SOURCE_LABELS = {
+  ai: 'Opis przygotowany przez AI',
+  wikipedia: 'Źródło: Wikipedia',
+  slownik: 'Opis ze słownika strony'
+};
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
-// Czy słowa różnią się najwyżej jedną literą (zamiana, brak albo nadmiar)
-function withinOneEdit(a, b) {
-  if (Math.abs(a.length - b.length) > 1) return false;
-  let i = 0;
-  let j = 0;
-  let edits = 0;
-  while (i < a.length && j < b.length) {
-    if (a[i] === b[j]) {
-      i++;
-      j++;
-      continue;
+function dishTooltipContent(el) {
+  const info = dishDescriptions.get(el.textContent.trim());
+  let html;
+  if (!info) {
+    html = '<span class="dish-tip-note">Wczytuję opis dania</span>';
+  } else if (info.text) {
+    html = escapeHtml(info.text);
+    if (DISH_SOURCE_LABELS[info.source]) {
+      html += `<br><small class="dish-tip-note">${DISH_SOURCE_LABELS[info.source]}</small>`;
     }
-    if (++edits > 1) return false;
-    if (a.length > b.length) i++;
-    else if (a.length < b.length) j++;
-    else {
-      i++;
-      j++;
-    }
+  } else {
+    html = '<span class="dish-tip-note">Brak opisu tego dania</span>';
   }
-  return edits + (a.length - i) + (b.length - j) <= 1;
+  if (el.dataset.deser) html += `<br><small>🍰 Deser: ${escapeHtml(el.dataset.deser)}</small>`;
+  if (el.dataset.alergeny) html += `<br><small>⚠️ Alergeny: ${escapeHtml(el.dataset.alergeny)}</small>`;
+  return html;
 }
 
-// Słowo kluczowe ze słownika pasuje, gdy każde jego słowo występuje w nazwie
-// dania bez polskich znaków albo z jedną literówką (dla słów od 5 liter)
-function findKeywordDefinitionFuzzy(dishText) {
-  const dishFolded = foldText(dishText);
-  const dishWords = dishFolded.split(/[^a-z0-9]+/).filter(Boolean);
-  for (const keyword in keywordDefinitions) {
-    const keyFolded = foldText(keyword);
-    if (dishFolded.includes(keyFolded)) return keywordDefinitions[keyword];
-    const keyWords = keyFolded.split(/[^a-z0-9]+/).filter(Boolean);
-    const matches = keyWords.length > 0 && keyWords.every(key =>
-      dishWords.some(word => word === key || (key.length >= 5 && withinOneEdit(word, key))));
-    if (matches) return keywordDefinitions[keyword];
+function refreshDishTooltips() {
+  document.querySelectorAll('.dish-name').forEach(el => {
+    if (el._tippy) el._tippy.setContent(dishTooltipContent(el));
+  });
+}
+
+// Pobiera opisy dań, których jeszcze nie znamy, po kilkanaście w jednym zapytaniu
+async function fetchDishDescriptions(dishes) {
+  const missing = dishes.filter(dish => !dishDescriptions.has(dish.name) && !pendingDishNames.has(dish.name));
+  missing.forEach(dish => pendingDishNames.add(dish.name));
+  const stats = {};
+  for (let i = 0; i < missing.length; i += DISH_INFO_CHUNK) {
+    const chunk = missing.slice(i, i + DISH_INFO_CHUNK);
+    try {
+      const response = await fetch('dish_info.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dishes: chunk })
+      });
+      const data = await response.json();
+      if (!data.Successful) throw new Error(data.Error || 'brak odpowiedzi');
+      chunk.forEach(dish => dishDescriptions.set(dish.name, data.Descriptions[dish.name] || { text: null, source: 'brak' }));
+      Object.entries(data.Stats || {}).forEach(([source, count]) => { stats[source] = (stats[source] || 0) + count; });
+    } catch (error) {
+      console.warn('Opisy dań niedostępne:', error);
+      chunk.forEach(dish => dishDescriptions.set(dish.name, { text: null, source: 'brak' }));
+    }
+    chunk.forEach(dish => pendingDishNames.delete(dish.name));
+    refreshDishTooltips();
   }
-  return null;
+  if (toggleDebugCheckbox.checked && missing.length) {
+    debugBox.innerHTML += '<br><br><strong>📚 Opisy dań:</strong> ' +
+      Object.entries(stats).map(([source, count]) => `${escapeHtml(source)}: ${count}`).join(', ');
+  }
 }
 
 async function attachTooltipListeners() {
@@ -1257,178 +1287,24 @@ async function attachTooltipListeners() {
     return;
   }
 
-  const debugEnabled = toggleDebugCheckbox.checked;
-  const debugLog = [];
-  const elements = document.querySelectorAll('.dish-name');
-
-  for (const el of elements) {
-    const dishText = el.textContent.trim();
-    const dishLower = dishText.toLowerCase();
-    let definition = null;
-
-    // 1. Sprawdź polishDefinitions (pełna nazwa)
-    if (polishDefinitions && polishDefinitions[dishLower]) {
-      definition = polishDefinitions[dishLower];
-    }
-
-    // 2. Sprawdź keywordDefinitions (słowa kluczowe)
-    if (!definition) {
-      for (const keyword in keywordDefinitions) {
-        if (dishLower.includes(keyword)) {
-          definition = keywordDefinitions[keyword];
-          break;
-        }
-      }
-    }
-
-    // 2b. To samo bez polskich znaków i z tolerancją na literówkę
-    if (!definition) {
-      definition = findKeywordDefinitionFuzzy(dishText);
-    }
-
-    // 3. Jeśli brak - pobierz z Wikipedia i AUTOMATYCZNIE dodaj do pliku
-    if (!definition) {
-      if (debugEnabled) {
-        debugLog.push(`🔍 Pobieram definicję dla: <strong>${dishText}</strong>`);
-      }
-      
-      definition = await fetchAndAddDefinition(dishText, debugEnabled, debugLog);
-    }
-
-    // Utwórz tooltip
-    let tippyContent = definition || 'Definicja niedostępna';
-    if (el.dataset.deser) {
-      tippyContent += `<br><small>🍰 Deser: ${el.dataset.deser}</small>`;
-    }
-    if (el.dataset.alergeny) {
-      tippyContent += `<br><small>⚠️ Alergeny: ${el.dataset.alergeny}</small>`;
-    }
-    tippy(el, {
-      content: tippyContent,
-      allowHTML: true,
-      theme: localStorage.getItem('theme') === 'dark' ? 'dark' : 'light',
-      placement: 'top',
-    });
-  }
-
-  if (debugEnabled && debugLog.length > 0) {
-    debugBox.innerHTML += '<br><br><strong>📚 Status definicji:</strong><br>' + debugLog.join('<br>');
-  }
-}
-
-// Funkcja pobierająca i automatycznie dodająca definicję
-async function fetchAndAddDefinition(dishName, debugEnabled, debugLog) {
-  try {
-    // Pobierz z Wikipedia
-    const definition = await fetchSmartDefinitionFromWikipedia(dishName);
-    
-    if (definition && definition !== 'Definicja niedostępna') {
-      // AUTOMATYCZNIE dodaj do definitions.js
-      const saved = await addDefinitionToFile(dishName, definition);
-      
-      if (saved) {
-        // Dodaj też do pamięci, żeby od razu działało
-        if (typeof polishDefinitions !== 'undefined') {
-          polishDefinitions[dishName.toLowerCase()] = definition;
-        }
-        
-        if (debugEnabled) {
-          debugLog.push(`✅ Dodano do definitions.js: <strong>${dishName}</strong>`);
-          debugLog.push(`   └─ "${definition}"`);
-        }
-      }
-      
-      return definition;
+  const theme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
+  const dishes = [];
+  const seen = new Set();
+  document.querySelectorAll('.dish-name').forEach(el => {
+    const name = el.textContent.trim();
+    if (!name) return;
+    if (el._tippy) {
+      el._tippy.setContent(dishTooltipContent(el));
     } else {
-      if (debugEnabled) {
-        debugLog.push(`❌ Nie znaleziono w Wikipedia: <strong>${dishName}</strong>`);
-      }
-      return 'Definicja niedostępna';
+      tippy(el, { content: dishTooltipContent(el), allowHTML: true, theme, placement: 'top' });
     }
-    
-  } catch (error) {
-    console.error('Błąd pobierania definicji:', error);
-    return 'Definicja niedostępna';
-  }
-}
+    if (!seen.has(name)) {
+      seen.add(name);
+      dishes.push({ name, kind: el.classList.contains('cell-first-dish') ? 'zupa' : 'drugie' });
+    }
+  });
 
-// Funkcja automatycznie dodająca definicję do pliku
-async function addDefinitionToFile(dishName, definition) {
-  try {
-    const response = await fetch('add_definition.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        dish: dishName,
-        definition: definition
-      })
-    });
-    
-    const data = await response.json();
-    return data.success;
-    
-  } catch (error) {
-    console.error('Błąd zapisu definicji:', error);
-    return false;
-  }
-}
-
-// Funkcja pobierająca NAJWAŻNIEJSZE zdanie z Wikipedia
-async function fetchSmartDefinitionFromWikipedia(dishName) {
-  try {
-    // Próba 1: Pełna nazwa
-    let url = `https://pl.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(dishName)}`;
-    let response = await fetch(url);
-    
-    // Próba 2: Pierwsze słowo (np. "Żurek" zamiast "Żurek staropolski")
-    if (!response.ok) {
-      const firstWord = dishName.split(/\s+/)[0];
-      url = `https://pl.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(firstWord)}`;
-      response = await fetch(url);
-    }
-    
-    if (!response.ok) {
-      return 'Definicja niedostępna';
-    }
-    
-    const data = await response.json();
-    
-    if (!data.extract) {
-      return 'Definicja niedostępna';
-    }
-    
-    // EKSTRAKCJA NAJWAŻNIEJSZEGO ZDANIA
-    let extract = data.extract;
-    
-    // Usuń zbędne frazy na początku
-    extract = extract.replace(/^(To |Jest to |W kuchni polskiej |Tradycyjne |Klasyczne )/i, '');
-    
-    // Weź pierwsze zdanie (do pierwszej kropki + spacja)
-    let firstSentence = extract.split(/\.\s+/)[0];
-    
-    // Jeśli za długie (>150 znaków), skróć do ostatniego przecinka przed 150
-    if (firstSentence.length > 150) {
-      const cutPoint = firstSentence.lastIndexOf(',', 147);
-      if (cutPoint > 80) { // Tylko jeśli ma sens (nie za krótko)
-        firstSentence = firstSentence.substring(0, cutPoint);
-      } else {
-        firstSentence = firstSentence.substring(0, 147) + '...';
-      }
-    }
-    
-    // Dodaj kropkę na końcu jeśli brak
-    if (!firstSentence.endsWith('.') && !firstSentence.endsWith('...')) {
-      firstSentence += '.';
-    }
-    
-    return firstSentence;
-    
-  } catch (error) {
-    console.error('Błąd pobierania z Wikipedia:', error);
-    return 'Definicja niedostępna';
-  }
+  await fetchDishDescriptions(dishes);
 }
 
 function attachSelectAllListeners() {

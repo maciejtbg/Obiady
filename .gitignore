@@ -4,3 +4,4 @@ ocr_config.php
 cache/
 tests/generator/cases/
 tests/generator/last_results.json
+ai_config.php
