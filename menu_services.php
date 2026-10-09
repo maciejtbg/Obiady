@@ -265,10 +265,12 @@ function ms_convert_menu($path, array $keys) {
         $result = $tryText($ocr($type), 'zdjecie->ocr');
     } elseif ($type === 'txt') {
         $result = $tryText(file_get_contents($path), 'tekst');
-        // Zwykły plik tekstowy bez rozpoznanego jadłospisu to błąd, a nie
-        // materiał dla starego parsera (nie trafia też do historii)
-        if (!$result) $legacyText = null;
     }
+
+    // Stary parser w script.js dostaje tylko tekst z Worda (jak dawniej).
+    // Tekst ze zwykłego pliku, PDF czy OCR bez rozpoznanego jadłospisu to błąd,
+    // który nie może trafić do historii widocznej dla wszystkich.
+    if (!in_array($type, ['docx', 'doc'], true)) $legacyText = null;
 
     if ($result && $notes) {
         $result['Warnings'] = array_merge($notes, $result['Warnings'] ?? []);

@@ -58,7 +58,8 @@ if ($conversion['result'] !== null) {
     // Ostatnia deska ratunku: surowy tekst rozpozna stary parser w script.js
     $jsonResult = json_encode(['Successful' => true, 'TextResult' => $conversion['legacyText']], JSON_UNESCAPED_UNICODE);
 } else {
-    echo json_encode(['Successful' => false, 'Error' => $conversion['error']], JSON_UNESCAPED_UNICODE);
+    // Log: kolejne próby konwersji (bez kluczy), widoczne w trybie debugowania strony
+    echo json_encode(['Successful' => false, 'Error' => $conversion['error'], 'Log' => $conversion['log']], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

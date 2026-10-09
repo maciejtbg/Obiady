@@ -662,6 +662,9 @@ function uploadAndConvert(file) {
       } else {
         if (toggleDebugCheckbox.checked) {
           debugBox.innerHTML += '<br>❌ Konwersja nieudana: ' + (data.Error || 'Nieznany błąd');
+          if (Array.isArray(data.Log)) {
+            debugBox.innerHTML += '<br>' + data.Log.map(step => '• ' + String(step).replace(/</g, '&lt;')).join('<br>');
+          }
         }
         // Serwer podaje konkretny powód (np. nieobsługiwany format, nieczytelne zdjęcie)
         const warningBox = document.getElementById('warningBox');
