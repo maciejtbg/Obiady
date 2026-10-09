@@ -122,20 +122,26 @@ function dd_load_ai_config() {
 // -------------------------------------------------------
 
 const DD_AI_INSTRUCTIONS = <<<'TXT'
-Piszesz krótkie opisy dań ze szkolnego jadłospisu dla rodziców, którzy wybierają obiady dla dziecka.
+Piszesz krótkie opisy dań ze szkolnego jadłospisu dla rodziców, którzy wybierają obiady dla dziecka i chcą wiedzieć, co dziecko dostanie na talerzu.
 Zasady:
-- Po polsku, 1 lub 2 zdania, najwyżej 200 znaków.
-- Napisz, czym jest danie i z czego zwykle się je przygotowuje (główne składniki, sposób przyrządzenia). Przy zestawie z dodatkami opisz przede wszystkim danie główne, a dodatki wymień krótko.
-- Nazwy mogą mieć literówki, brakujące polskie znaki albo sklejone słowa. Odczytaj najbardziej prawdopodobne danie.
-- Nie zaczynaj od nazwy dania. Nie wymyślaj alergenów, kaloryczności, pochodzenia ani szczegółów, których nie da się wywnioskować z nazwy; typowy skład opisz słowem "zwykle".
+- Po polsku, 1 lub 2 zdania, najwyżej 220 znaków.
+- Nie powtarzaj samej nazwy dania ani listy dodatków. Wyjaśnij, czym jest danie: z czego się je robi, jak się je przyrządza (smażone, pieczone, duszone, gotowane, zmiksowane) i jaki ma charakter (np. słodkie, łagodne, kremowe).
+- Objaśniaj mniej znane nazwy i określenia, np. sos beszamelowy (z mleka, masła i mąki), sos Napoli (pomidorowy z ziołami), warzywa królewskie (mieszanka m.in. marchewki, kalafiora i brokułu), zupa nic (słodka zupa mleczna z pianką z białek).
+- Przy niektórych daniach jest fragment z Wikipedii o potrawie podstawowej. Korzystaj z niego, ale opisuj danie z jadłospisu (np. jego wersję na wywarze warzywnym). Jeśli fragment dotyczy innej potrawy, pomiń go.
+- Przy zestawie (danie główne, ziemniaki, surówka) opisz przede wszystkim danie główne; dodatki wspomnij krótko tylko wtedy, gdy wymagają wyjaśnienia.
+- Nazwy mogą mieć literówki, brakujące polskie znaki albo sklejone słowa. Odczytaj najbardziej prawdopodobne danie. Nazwy żartobliwe dla dzieci (np. "zupa Shrekowa") opisz po tym, co zwykle oznaczają. Pisz, że nazwa jest żartobliwa, tylko gdy nawiązuje do bajki albo postaci; "zupa nic" to tradycyjna nazwa.
+- Nie zaczynaj od nazwy dania. Nie wymyślaj alergenów, kaloryczności ani pochodzenia; typowy skład opisz słowem "zwykle".
 - Bez przymiotników reklamowych (pyszny, idealny, wyśmienity, soczysty), bez emoji, bez myślników.
 - Jeśli tekst nie jest nazwą potrawy (np. "dzień wolny", "wycieczka", "deser"), zwróć pusty opis.
-Odpowiedz wyłącznie obiektem JSON w postaci {"opisy":[{"id":1,"opis":"..."}]}.
+Przykłady:
+[drugie danie] Kotlet pożarski, ziemniaki, surówka -> "Panierowany kotlet z mielonego mięsa drobiowego, smażony na złoto, podawany z gotowanymi ziemniakami i surówką ze świeżych warzyw."
+[zupa] Zupa krem z dyni -> "Gładka, zmiksowana zupa z dyni, zwykle z marchewką i cebulą, o łagodnym, lekko słodkim smaku."
+Odpowiedz wyłącznie obiektem JSON w postaci {"opisy":[{"id":1,"opis":"..."}]} z opisem dla każdego id.
 TXT;
 
 // Parametry zależne od rodziny modelu (Groq): bez rozumowania, sama odpowiedź
 function dd_ai_model_params($model) {
-    if (strpos($model, 'gpt-oss') !== false) return ['reasoning_effort' => 'low', 'include_reasoning' => false];
+    if (strpos($model, 'gpt-oss') !== false) return ['reasoning_effort' => 'medium', 'include_reasoning' => false];
     if (strpos($model, 'qwen') !== false) return ['reasoning_effort' => 'none'];
     return [];
 }
@@ -189,7 +195,7 @@ function dd_tidy_text($text) {
 }
 
 /**
- * Opisuje dania przez AI. $items: id => ['name' => ..., 'kind' => 'zupa'|'drugie'].
+ * Opisuje dania przez AI. $items: id => ['name' => ..., 'kind' => 'zupa'|'drugie', 'hint' => fragment z Wikipedii|null].
  * Zwraca id => opis ('' gdy model uznał, że to nie jest potrawa).
  * Dania, dla których nie ma odpowiedzi (błąd, limit), nie występują w wyniku.
  */
@@ -197,14 +203,15 @@ function dd_ai_describe(array $items, array $config, &$log, &$model) {
     $lines = [];
     foreach ($items as $id => $item) {
         $label = $item['kind'] === 'zupa' ? 'zupa' : 'drugie danie';
-        $lines[] = "$id. [$label] {$item['name']}";
+        $lines[] = "$id. [$label] {$item['name']}" . (empty($item['hint']) ? '' : "
+   Wikipedia: {$item['hint']}");
     }
     $messages = [
         ['role' => 'system', 'content' => DD_AI_INSTRUCTIONS],
         ['role' => 'user', 'content' => "Dania:\n" . implode("\n", $lines)],
     ];
     foreach ($config['models'] as $candidate) {
-        $body = ['model' => $candidate, 'messages' => $messages, 'temperature' => 0.3, 'max_tokens' => 3000] + dd_ai_model_params($candidate);
+        $body = ['model' => $candidate, 'messages' => $messages, 'temperature' => 0.3, 'max_tokens' => 6000] + dd_ai_model_params($candidate);
         $response = dd_ai_http($config['url'], $config['api_key'], $body, $status, $error);
         if ($response === null) {
             $log[] = "AI $candidate: $error";
@@ -224,7 +231,8 @@ function dd_ai_describe(array $items, array $config, &$log, &$model) {
             return [];
         }
         $model = $candidate;
-        return array_intersect_key($parsed, $items);
+        // Pominięte id: model uznał, że to nie potrawa (inaczej pytalibyśmy o nie przy każdym wyświetleniu)
+        return array_intersect_key($parsed, $items) + array_fill_keys(array_keys($items), '');
     }
     return [];
 }
@@ -392,6 +400,19 @@ function dd_wiki_describe(array $items, &$log) {
     return $result;
 }
 
+// Wikipedia dla dań jeszcze niesprawdzonych; wyniki dopisuje do $hits, sprawdzone klucze do $checked
+function dd_wiki_lookup(array $dishes, array &$hits, array &$checked, &$log) {
+    $keys = array_values(array_diff(array_keys($dishes), array_keys($checked)));
+    if (!$keys) return;
+    $items = [];
+    foreach ($keys as $i => $key) $items[$i + 1] = ['name' => $dishes[$key]['clean'], 'kind' => $dishes[$key]['kind']];
+    $found = dd_wiki_describe($items, $log);
+    foreach ($keys as $i => $key) {
+        $checked[$key] = true;
+        if (isset($found[$i + 1])) $hits[$key] = $found[$i + 1];
+    }
+}
+
 // -------------------------------------------------------
 // Całość
 // -------------------------------------------------------
@@ -417,6 +438,8 @@ function dd_describe($conn, array $requests, &$stats, &$log) {
     }
 
     $found = [];   // key => ['text', 'source']
+    $wikiHits = [];    // key => ['text', 'title'] z Wikipedii
+    $wikiChecked = []; // key => true, gdy Wikipedia była już sprawdzona
     $fresh = [];   // key => true dla opisów pobranych w tym wywołaniu
     $cached = [];
     if ($conn) {
@@ -451,13 +474,17 @@ function dd_describe($conn, array $requests, &$stats, &$log) {
             }
         }
         $batches = array_slice(array_chunk(array_keys($todo), DD_AI_BATCH), 0, DD_AI_BATCHES_PER_CALL);
+        // Fragment z Wikipedii pomaga AI trafić w skład klasycznych potraw (np. barszcz ukraiński)
+        if ($batches) dd_wiki_lookup(array_intersect_key($todo, array_flip(array_merge(...$batches))), $wikiHits, $wikiChecked, $log);
         foreach ($batches as $keys) {
             if (!dd_ai_quota_take($conn, $ai['daily_limit'])) {
                 $log[] = 'AI: wykorzystany dzienny limit zapytań';
                 break;
             }
             $items = [];
-            foreach ($keys as $i => $key) $items[$i + 1] = ['name' => $todo[$key]['clean'], 'kind' => $todo[$key]['kind']];
+            foreach ($keys as $i => $key) {
+                $items[$i + 1] = ['name' => $todo[$key]['clean'], 'kind' => $todo[$key]['kind'], 'hint' => $wikiHits[$key]['text'] ?? null];
+            }
             $model = null;
             $answers = dd_ai_describe($items, $ai, $log, $model);
             if (!$answers) break;
@@ -478,8 +505,7 @@ function dd_describe($conn, array $requests, &$stats, &$log) {
         return !isset($found[$key]['text']);
     }, ARRAY_FILTER_USE_KEY);
     $seed = dd_seed();
-    $wikiItems = [];
-    $wikiKeys = [];
+    $wikiTodo = [];
     foreach ($todo as $key => $dish) {
         $folded = dd_fold($dish['clean']);
         // Zupy w jadłospisie często są bez słowa "zupa" ("Kalafiorowa z ziemniakami")
@@ -490,18 +516,17 @@ function dd_describe($conn, array $requests, &$stats, &$log) {
             if ($conn) dd_db_save($conn, $key, $dish['clean'], $seed[$folded], 'slownik', null, false);
             continue;
         }
-        $wikiKeys[] = $key;
-        $wikiItems[count($wikiKeys)] = ['name' => $dish['clean'], 'kind' => $dish['kind']];
+        $wikiTodo[$key] = $dish;
     }
-    if ($wikiItems) {
-        $wiki = dd_wiki_describe($wikiItems, $log);
-        foreach ($wikiKeys as $i => $key) {
-            $hit = $wiki[$i + 1] ?? null;
+    if ($wikiTodo) {
+        dd_wiki_lookup($wikiTodo, $wikiHits, $wikiChecked, $log);
+        foreach ($wikiTodo as $key => $dish) {
+            $hit = $wikiHits[$key] ?? null;
             $found[$key] = $hit ? ['text' => $hit['text'], 'source' => 'wikipedia'] : ['text' => null, 'source' => 'brak'];
             $fresh[$key] = true;
             if ($conn) {
                 $detail = $hit ? 'https://pl.wikipedia.org/wiki/' . rawurlencode(str_replace(' ', '_', $hit['title'])) : null;
-                dd_db_save($conn, $key, $todo[$key]['clean'], $hit['text'] ?? null, $hit ? 'wikipedia' : 'brak', $detail, false);
+                dd_db_save($conn, $key, $dish['clean'], $hit['text'] ?? null, $hit ? 'wikipedia' : 'brak', $detail, false);
             }
         }
     }
