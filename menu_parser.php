@@ -43,8 +43,9 @@ const MP_ROMAN = ['i' => 1, 'ii' => 2, 'iii' => 3, 'iv' => 4, 'v' => 5, 'vi' => 
 const MP_ROLE_PHRASES = [
     'allergens' => [['alergeny'], ['alergen'], ['alergenne'], ['alergenow']],
     'dessert' => [['deser'], ['desery'], ['podwieczorek']],
-    'main' => [['drugie'], ['ii', 'danie'], ['2', 'danie'], ['danie', 'glowne'], ['dania', 'glowne'], ['danie', 'drugie'], ['obiad']],
-    'soup' => [['zupa'], ['zupy'], ['i', 'danie'], ['1', 'danie'], ['pierwsze', 'danie'], ['danie', 'pierwsze'], ['pierwsze']],
+    // "il", "ll", "11" i "l" to typowe odczyty OCR dla "II" i "I"
+    'main' => [['drugie'], ['ii', 'danie'], ['il', 'danie'], ['ll', 'danie'], ['11', 'danie'], ['2', 'danie'], ['danie', 'glowne'], ['dania', 'glowne'], ['danie', 'drugie'], ['obiad']],
+    'soup' => [['zupa'], ['zupy'], ['i', 'danie'], ['l', 'danie'], ['1', 'danie'], ['pierwsze', 'danie'], ['danie', 'pierwsze'], ['pierwsze']],
     'day' => [['dzien'], ['data'], ['dni'], ['termin']],
     'ignore' => [['gramatura'], ['kcal'], ['kalorie'], ['wartosc'], ['sniadanie'], ['kolacja'], ['cena'], ['uwagi'], ['napoj'], ['kompot'], ['lp'], ['nr'], ['waga']],
 ];
@@ -93,6 +94,25 @@ function mp_ucfirst($text) {
     return mb_strtoupper(mb_substr($text, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($text, 1, null, 'UTF-8');
 }
 
+// Odległość edycyjna, w której zamiana dwóch sąsiednich liter ("Śorda") to jeden błąd
+function mp_distance($a, $b) {
+    $lengthA = strlen($a);
+    $lengthB = strlen($b);
+    $d = [];
+    for ($i = 0; $i <= $lengthA; $i++) $d[$i][0] = $i;
+    for ($j = 0; $j <= $lengthB; $j++) $d[0][$j] = $j;
+    for ($i = 1; $i <= $lengthA; $i++) {
+        for ($j = 1; $j <= $lengthB; $j++) {
+            $cost = $a[$i - 1] === $b[$j - 1] ? 0 : 1;
+            $d[$i][$j] = min($d[$i - 1][$j] + 1, $d[$i][$j - 1] + 1, $d[$i - 1][$j - 1] + $cost);
+            if ($i > 1 && $j > 1 && $a[$i - 1] === $b[$j - 2] && $a[$i - 2] === $b[$j - 1]) {
+                $d[$i][$j] = min($d[$i][$j], $d[$i - 2][$j - 2] + 1);
+            }
+        }
+    }
+    return $d[$lengthA][$lengthB];
+}
+
 // Nazwa dnia tygodnia (1 = poniedziałek ... 7 = niedziela) z tolerancją na literówki
 function mp_weekday($word) {
     $word = str_replace(' ', '', mp_fold($word));
@@ -105,7 +125,7 @@ function mp_weekday($word) {
     $bestDistance = 99;
     foreach (MP_WEEKDAYS as $n => $forms) {
         if (strpos($forms[0], $word) === 0) return $n; // skrót typu "czwar", "piat"
-        $distance = levenshtein($word, $forms[0]);
+        $distance = mp_distance($word, $forms[0]);
         if ($distance < $bestDistance) {
             $bestDistance = $distance;
             $best = $n;
@@ -124,7 +144,7 @@ function mp_month($word) {
     if (strlen($word) < 5) return null;
     foreach (MP_MONTHS as $n => $forms) {
         foreach (array_slice($forms, 0, 2) as $form) {
-            if (levenshtein($word, $form) <= 2) return $n;
+            if (mp_distance($word, $form) <= 2) return $n;
         }
     }
     return null;
@@ -144,7 +164,7 @@ function mp_role($label) {
         foreach ($phrases as $phrase) {
             if (count($phrase) !== 1 || strlen($phrase[0]) < 5) continue;
             foreach ($tokens as $token) {
-                if (strlen($token) >= 4 && levenshtein($token, $phrase[0]) <= 1) return $role;
+                if (strlen($token) >= 4 && mp_distance($token, $phrase[0]) <= 1) return $role;
             }
         }
     }
@@ -190,6 +210,39 @@ function mp_clean_allergens($text) {
 // ---------------------------------------------------------------
 
 /**
+ * Nazwa dnia tygodnia, także rozbita spacjami na 2-3 części ("Pon iedziałek",
+ * "Śr o da"). Sprawdza słowa o indeksach $first..$last. Zwraca
+ * [numer dnia, tekst nazwy, koniec (bajt)] albo null.
+ */
+function mp_find_weekday($text, array $words, $first, $last) {
+    $count = count($words);
+    for ($i = $first; $i <= $last && $i < $count; $i++) {
+        for ($length = 3; $length >= 1; $length--) {
+            if ($i + $length > $count) continue;
+            $joined = $words[$i][0];
+            $glued = true;
+            for ($k = $i + 1; $k < $i + $length; $k++) {
+                $gapStart = $words[$k - 1][1] + strlen($words[$k - 1][0]);
+                if (!preg_match('/^ {1,2}$/', substr($text, $gapStart, $words[$k][1] - $gapStart))) {
+                    $glued = false;
+                    break;
+                }
+                $joined .= $words[$k][0];
+            }
+            if (!$glued) continue;
+            // Kilka części musi razem dać pełną nazwę; samo jedno słowo może być skrótem
+            $weekday = mp_weekday($joined);
+            if ($weekday !== null && ($length === 1 || mb_strlen($joined, 'UTF-8') >= 5)) {
+                $endWord = $words[$i + $length - 1];
+                $end = $endWord[1] + strlen($endWord[0]);
+                return [$weekday, substr($text, $words[$i][1], $end - $words[$i][1]), $end];
+            }
+        }
+    }
+    return null;
+}
+
+/**
  * Szuka nazwy dnia tygodnia i/lub daty. W linii tekstu kotwica musi być na
  * początku; w komórce kolumny "dzień" ($inCell) może być też dalej.
  * Zwraca ['day', 'month', 'year', 'weekday', 'weekdayRaw', 'rest'] albo null.
@@ -198,36 +251,40 @@ function mp_parse_anchor($text, $inCell = false) {
     // Tabulatory zostają: w tekście z OCR oddzielają kolumny
     $text = trim(preg_replace('/[ \x{00A0}\r\n]+/u', ' ', (string) $text));
     if ($text === '') return null;
+    // Litera O zamiast zera przy cyfrach ("1O.02", typowe dla OCR); długość tekstu się nie zmienia
+    $text = preg_replace('/(?<=\d)[oO]|[oO](?=\d)/', '0', $text);
     $result = ['day' => null, 'month' => null, 'year' => null, 'weekday' => null, 'weekdayRaw' => '', 'rest' => ''];
     $end = 0;
 
-    // Nazwa dnia: pierwsze słowo (w komórce dnia także drugie lub trzecie)
+    // Nazwa dnia: na początku (w komórce dnia także jako drugie lub trzecie słowo)
     preg_match_all('/\p{L}+/u', $text, $words, PREG_OFFSET_CAPTURE);
-    foreach (array_slice($words[0], 0, $inCell ? 3 : 1) as $word) {
-        if (!$inCell && $word[1] > 3) break;
-        $weekday = mp_weekday($word[0]);
-        if ($weekday !== null) {
-            $result['weekday'] = $weekday;
-            $result['weekdayRaw'] = $word[0];
-            $end = $word[1] + strlen($word[0]);
-            break;
+    $words = $words[0];
+    if ($words && ($inCell || $words[0][1] <= 3)) {
+        $found = mp_find_weekday($text, $words, 0, $inCell ? 2 : 0);
+        if ($found !== null) {
+            list($result['weekday'], $result['weekdayRaw'], $end) = $found;
         }
     }
 
-    // Data: 07.09 | 7/9 | 07-09-2026 | 7.IX | 7 września (2026)
+    // Data: 07.09 | 7/9 | 07-09-2026 | 7.IX | 7 września | 11-go stycznia | (z nazwą dnia) 7,09
     $from = $result['weekday'] !== null && !$inCell ? $end : 0;
     $tail = substr($text, $from);
+    $lead = preg_match('/^[\s,:;.\-–—(\[]*/u', $tail, $m) ? strlen($m[0]) : 0;
     $patterns = [
         ['/(?<!\d)(\d{1,2})\s*[.\/-]\s*(\d{1,2})(?:\s*[.\/-]\s*((?:19|20)?\d{2}))?(?:\s*r\b\.?)?(?![\d,])/u', 'num'],
         ['/(?<!\d)(\d{1,2})\s*[.\s]\s*(XII|XI|IX|X|VIII|VII|VI|IV|V|III|II|I)(?!\p{L})\.?/iu', 'roman'],
-        ['/(?<!\d)(\d{1,2})\s+(\p{L}{3,})\.?(?:\s+((?:19|20)\d{2}))?/u', 'word'],
+        ['/(?<!\d)(\d{1,2})(?:\s*-?\s*(?:go|ego))?\s+(\p{L}{3,})\.?(?:\s+((?:19|20)\d{2}))?/iu', 'word'],
     ];
+    if ($result['weekday'] !== null) {
+        // Przecinek jako separator tylko za nazwą dnia ("Piątek 15,01"); bez niej to lista alergenów
+        $patterns[] = ['/(?<!\d)(\d{1,2})\s*,\s*(\d{1,2})(?![\d,])/u', 'num'];
+    }
     $best = null;
     foreach ($patterns as $pattern) {
         if (!preg_match_all($pattern[0], $tail, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) continue;
         foreach ($matches as $m) {
             $offset = $m[0][1];
-            if ($offset > ($inCell ? 40 : 3)) break;
+            if ($offset > ($inCell ? 40 : $lead + 2)) break;
             $day = (int) $m[1][0];
             if ($pattern[1] === 'num') $month = (int) $m[2][0];
             elseif ($pattern[1] === 'roman') $month = MP_ROMAN[strtolower($m[2][0])];
@@ -241,25 +298,49 @@ function mp_parse_anchor($text, $inCell = false) {
             break;
         }
     }
+    // Data z przecinkiem przed myślnikiem i treścią ("1,02 - Zupa ..."): lista alergenów tak nie wygląda
+    if ($best === null && $result['weekday'] === null && !$inCell
+        && preg_match('/^(\d{1,2})\s*,\s*(\d{2})\s*[–—-]\s*(?=\p{L})/u', $text, $m)
+        && (int) $m[1] >= 1 && (int) $m[1] <= 31 && (int) $m[2] >= 1 && (int) $m[2] <= 12) {
+        $best = ['offset' => 0, 'length' => strlen(rtrim($m[0], " –—-")), 'day' => (int) $m[1], 'month' => (int) $m[2], 'year' => null];
+    }
+    // Data z przecinkiem przed nazwą dnia ("25,12 Piątek"); bez nazwy dnia to lista alergenów
+    if ($best === null && $result['weekday'] === null && preg_match('/^(\d{1,2})\s*,\s*(\d{1,2})(?![\d,])/u', $text, $m)
+        && (int) $m[1] >= 1 && (int) $m[1] <= 31 && (int) $m[2] >= 1 && (int) $m[2] <= 12) {
+        foreach ($words as $index => $word) {
+            if ($word[1] < strlen($m[0])) continue;
+            if (preg_match('/^[\s,.:\-–(]*$/u', substr($text, strlen($m[0]), $word[1] - strlen($m[0])))) {
+                $found = mp_find_weekday($text, $words, $index, $index);
+                if ($found !== null) {
+                    $best = ['offset' => 0, 'length' => strlen($m[0]), 'day' => (int) $m[1], 'month' => (int) $m[2], 'year' => null];
+                }
+            }
+            break;
+        }
+    }
     if ($best !== null) {
         $result['day'] = $best['day'];
         $result['month'] = $best['month'];
         $result['year'] = $best['year'];
         $end = max($end, $from + $best['offset'] + $best['length']);
 
-        // Nazwa dnia za datą: "07.09 poniedziałek"
-        if ($result['weekday'] === null && preg_match('/^[\s,.:\-–(]*(\p{L}+)/u', substr($text, $end), $m)) {
-            $weekday = mp_weekday($m[1]);
-            if ($weekday !== null) {
-                $result['weekday'] = $weekday;
-                $result['weekdayRaw'] = $m[1];
-                $end += strlen($m[0]);
+        // Nazwa dnia za datą: "07.09 poniedziałek", "03.02.27 ŚR O DA"
+        if ($result['weekday'] === null) {
+            foreach ($words as $index => $word) {
+                if ($word[1] < $end) continue;
+                if (preg_match('/^[\s,.:\-–(]*$/u', substr($text, $end, $word[1] - $end))) {
+                    $found = mp_find_weekday($text, $words, $index, $index);
+                    if ($found !== null) {
+                        list($result['weekday'], $result['weekdayRaw'], $end) = $found;
+                    }
+                }
+                break;
             }
         }
     }
 
     if ($result['weekday'] === null && $result['day'] === null) return null;
-    $result['rest'] = trim(preg_replace('/^[\s:;,.\-–—|•)]+/u', '', substr($text, $end)));
+    $result['rest'] = trim(preg_replace('/^[\s:;,.\-–—|•)\]]+/u', '', substr($text, $end)));
     return $result;
 }
 
@@ -302,7 +383,9 @@ function mp_docx_walk_blocks($xpath, $parent, &$doc) {
         if ($node->localName === 'p') {
             $text = mp_docx_paragraph_text($node, "\n");
             foreach (preg_split('/\n/u', $text) as $line) {
-                if (trim($line) !== '') $doc['lines'][] = trim($line);
+                if (trim($line) === '') continue;
+                $doc['lines'][] = trim($line);
+                $doc['hint'] = mp_next_hint($line, $doc['hint'] ?? null);
             }
             // Pola tekstowe; mc:Fallback to kopia tej samej treści dla starszych programów
             foreach ($xpath->query('.//w:txbxContent[not(ancestor::mc:Fallback)]', $node) as $box) {
@@ -311,6 +394,8 @@ function mp_docx_walk_blocks($xpath, $parent, &$doc) {
         } elseif ($node->localName === 'tbl') {
             $grid = mp_docx_table_grid($xpath, $node);
             $doc['tables'][] = $grid;
+            $doc['tableHints'][] = $doc['hint'] ?? null;
+            $doc['hint'] = null;
             foreach ($grid as $row) {
                 $cells = array_filter(array_map(function ($cell) { return $cell['text']; }, $row), 'strlen');
                 if ($cells) $doc['lines'][] = implode("\t", $cells);
@@ -425,8 +510,32 @@ function mp_parse_price_table(array $grid, array &$prices) {
     return true;
 }
 
-function mp_empty_day($anchor) {
-    return ['anchor' => $anchor, 'soup' => '', 'main' => '', 'dessert' => '', 'allergens' => '', 'noMeal' => false];
+// $weekHint: [dzień, miesiąc] z nagłówka tygodnia ("TYDZIEŃ 2 • 7–11 WRZEŚNIA"),
+// pozwala ustalić datę, gdy w wierszu jest sama nazwa dnia
+function mp_empty_day($anchor, $weekHint = null) {
+    return ['anchor' => $anchor, 'soup' => '', 'main' => '', 'dessert' => '', 'allergens' => '', 'noMeal' => false, 'weekHint' => $weekHint];
+}
+
+// Podpowiedź tygodnia po tej linii: nagłówek "Tydzień ..." bez dat kasuje poprzednią
+function mp_next_hint($line, $current) {
+    $hint = mp_week_hint($line);
+    if ($hint !== null) return $hint;
+    return strpos(mp_fold($line), 'tydzien') !== false ? null : $current;
+}
+
+// Pierwsza data z nagłówka tygodnia: "Tydzień 2 (12–16 października)", "7–11 WRZEŚNIA", "05.10–09.10"
+function mp_week_hint($line) {
+    $line = (string) $line;
+    $folded = mp_fold($line);
+    if (strpos($folded, 'tydzien') === false && !preg_match('/\d\s*[–—-]\s*\d/u', $line)) return null;
+    if (preg_match('/(?<!\d)(\d{1,2})\s*[.\/]\s*(\d{1,2})(?!\d)/u', $line, $m) && (int) $m[2] >= 1 && (int) $m[2] <= 12) {
+        return [(int) $m[1], (int) $m[2]];
+    }
+    if (preg_match('/(?<!\d)(\d{1,2})\s*[–—-]\s*\d{1,2}\s+(\p{L}{3,})/u', $line, $m) || preg_match('/(?<!\d)(\d{1,2})\s+(\p{L}{3,})/u', $line, $m)) {
+        $month = mp_month($m[2]);
+        if ($month !== null) return [(int) $m[1], $month];
+    }
+    return null;
 }
 
 function mp_append(&$field, $text) {
@@ -450,20 +559,14 @@ function mp_mark_no_meal(array &$day, $extraText = '') {
     }
 }
 
-function mp_parse_table(array $grid, array &$prices) {
+function mp_parse_table(array $grid, array &$prices, $weekHint = null) {
     if (!$grid || mp_parse_price_table($grid, $prices)) return [];
     $text = function ($row, $col) { return isset($row[$col]) ? trim($row[$col]['text']) : ''; };
 
     // Układ odwrócony: wiersz z co najmniej dwoma dniami w kolumnach
     foreach (array_slice($grid, 0, 3, true) as $r => $row) {
-        $anchorCols = [];
-        foreach ($row as $c => $cell) {
-            $cellText = trim($cell['text']);
-            if ($cellText === '' || mp_word_count($cellText) > 5) continue;
-            $anchor = mp_parse_anchor($cellText, true);
-            if ($anchor) $anchorCols[$c] = $anchor;
-        }
-        if (count($anchorCols) >= 2) return mp_parse_transposed($grid, $r, $anchorCols);
+        $anchorCols = mp_row_anchor_columns($row);
+        if (count($anchorCols) >= 2) return mp_parse_transposed($grid, $r, $anchorCols, $weekHint);
     }
 
     // Nagłówek z nazwami kolumn (synonimy, literówki)
@@ -520,8 +623,19 @@ function mp_parse_table(array $grid, array &$prices) {
             }
             continue;
         }
+        if ($current !== null && $current['anchor']['day'] === null && $current['anchor']['weekday'] !== null
+            && $anchor['weekday'] === null && $anchor['day'] !== null) {
+            // Data w kolejnym wierszu pod nazwą dnia ("CZWARTEK" / "03.09")
+            $current['anchor']['day'] = $anchor['day'];
+            $current['anchor']['month'] = $anchor['month'];
+            $current['anchor']['year'] = $anchor['year'];
+            foreach ($roles as $c => $role) {
+                if (in_array($role, ['soup', 'main', 'dessert', 'allergens'], true)) mp_append($current[$role], $text($row, $c));
+            }
+            continue;
+        }
         if ($current !== null) $days[] = $current;
-        $current = mp_empty_day($anchor);
+        $current = mp_empty_day($anchor, $weekHint);
         foreach ($roles as $c => $role) {
             if (in_array($role, ['soup', 'main', 'dessert', 'allergens'], true)) $current[$role] = $text($row, $c);
         }
@@ -531,13 +645,37 @@ function mp_parse_table(array $grid, array &$prices) {
     return $days;
 }
 
-function mp_parse_transposed(array $grid, $headerRow, array $anchorCols) {
+// Kolumny wiersza, w których stoją dni ("Pon 5.10", "Wt 6.10", ...) -> [kolumna => kotwica]
+function mp_row_anchor_columns(array $row) {
+    $anchorCols = [];
+    foreach ($row as $c => $cell) {
+        $cellText = trim($cell['text']);
+        if ($cellText === '' || mp_word_count($cellText) > 8) continue;
+        $anchor = mp_parse_anchor($cellText, true);
+        if ($anchor) $anchorCols[$c] = $anchor;
+    }
+    return $anchorCols;
+}
+
+function mp_parse_transposed(array $grid, $headerRow, array $anchorCols, $weekHint = null) {
+    $result = [];
     $days = [];
     foreach ($anchorCols as $c => $anchor) {
-        $days[$c] = mp_empty_day($anchor);
+        $days[$c] = mp_empty_day($anchor, $weekHint);
     }
     foreach ($grid as $r => $row) {
         if ($r <= $headerRow) continue;
+        // Kolejny wiersz z dniami: następny tydzień w tej samej tabeli
+        $nextAnchors = mp_row_anchor_columns($row);
+        if (count($nextAnchors) >= 2) {
+            $result = array_merge($result, array_values($days));
+            $anchorCols = $nextAnchors;
+            $days = [];
+            foreach ($anchorCols as $c => $anchor) {
+                $days[$c] = mp_empty_day($anchor);
+            }
+            continue;
+        }
         $label = '';
         foreach ($row as $c => $cell) {
             if (!isset($anchorCols[$c]) && trim($cell['text']) !== '') {
@@ -551,10 +689,12 @@ function mp_parse_transposed(array $grid, $headerRow, array $anchorCols) {
             mp_append($days[$c][$role], isset($row[$c]) ? $row[$c]['text'] : '');
         }
     }
-    foreach ($days as &$day) {
+    $result = array_merge($result, array_values($days));
+    foreach ($result as &$day) {
         mp_mark_no_meal($day, $day['anchor']['rest']);
     }
-    return array_values($days);
+    unset($day);
+    return $result;
 }
 
 // ---------------------------------------------------------------
@@ -563,8 +703,9 @@ function mp_parse_transposed(array $grid, $headerRow, array $anchorCols) {
 
 function mp_clean_line($line) {
     $line = preg_replace('/[\x{00A0}\x{2007}\x{202F}]/u', ' ', $line);
-    // Punktory i numeracja listy na początku linii
-    $line = preg_replace('/^\s*(?:[•●▪■◦○·*>»\-–—]+|\d{1,2}[.)](?=\s+\p{L}))\s*/u', '', $line);
+    // Punktory i numeracja listy na początku linii; numeracja także przed datą
+    // ("4. 14/1 Czwartek", "7. 17-go listopada"), ale nie sama data "7. 10"
+    $line = preg_replace('/^\s*(?:[•●▪■◦○·*>»\-–—]+|\d{1,2}[.)](?=\s+\p{L})|\d{1,2}[.)](?=\s+\d{1,2}(?:\s*[.\/,-]\s*\d{1,2}|\s*-?\s*go\b|\s*\.\s*[IVX]+\b|\s+\p{L}{3,})))\s*/iu', '', $line);
     // Co najmniej 3 spacje to granica kolumn (np. z OCR), 2 spacje to zwykła literówka
     $line = preg_replace('/ {3,}/u', "\t", $line);
     return trim(preg_replace('/ {2}/u', ' ', $line));
@@ -576,7 +717,8 @@ function mp_is_section_break($line) {
     foreach (['tydzien', 'legenda', 'cennik', 'uwaga', 'w cenie', 'jadlospis', 'uklad tygodniowy', 'wariant', 'smacznego', 'zastrzegamy', 'alergeny legenda', 'alergeny sa'] as $prefix) {
         if (strpos($folded, $prefix) === 0) return true;
     }
-    // Legenda alergenów: "1 – zboża zawierające gluten"
+    // Legenda alergenów: "1 – zboża zawierające gluten", także w jednej linii "Alergeny: 1 – gluten, 3 – jaja"
+    if (strpos($folded, 'alergen') === 0 && preg_match('/\d\s*[–—-]\s*\p{L}{3,}/u', $line)) return true;
     if (preg_match('/^\d{1,2}\s*[–—-]\s*\p{L}{3,}/u', $line) && !mp_parse_anchor($line)) return true;
     // Nagłówek tabeli przepisanej do tekstu: "DZIEŃ ZUPA DRUGIE DANIE DESER"
     $tokens = mp_tokens($line);
@@ -591,11 +733,17 @@ function mp_is_section_break($line) {
     return false;
 }
 
+// Słowa, z których może się składać etykieta ("Zupa:", "II danie –", "Danie główne:")
+const MP_LABEL_WORDS = ['zupa', 'zupy', 'dnia', 'i', 'ii', 'il', 'll', 'l', '1', '11', '2', 'danie', 'dania', 'drugie', 'pierwsze', 'glowne',
+    'deser', 'desery', 'podwieczorek', 'alergeny', 'alergen', 'alergenow', 'obiad'];
+
 // "Zupa: pomidorowa", "II danie - kotlet", "Alergeny: 1,7" -> [rola, treść]
 function mp_split_label($line) {
     if (preg_match('/^([\p{L}0-9 .+]{2,30}?)\s*[:\-–—]\s*(.*)$/u', $line, $m)) {
         $role = mp_role($m[1]);
-        if (in_array($role, ['soup', 'main', 'dessert', 'allergens'], true) && mp_word_count($m[1]) <= 3) {
+        // Tylko słowa etykiety: "Zupa jarzynowa – 250 ml" to danie, nie etykieta
+        $labelOnly = !array_diff(mp_tokens($m[1]), MP_LABEL_WORDS);
+        if (in_array($role, ['soup', 'main', 'dessert', 'allergens'], true) && $labelOnly) {
             return [$role, trim($m[2])];
         }
     }
@@ -612,6 +760,7 @@ function mp_is_noise($line) {
 
 function mp_classify_lines(array $lines, array &$day) {
     $free = [];
+    $labelSeen = [];
     foreach ($lines as $line) {
         $line = trim($line);
         if ($line === '') continue;
@@ -625,6 +774,13 @@ function mp_classify_lines(array $lines, array &$day) {
             continue;
         }
         if ($role !== null) {
+            // Druga "Zupa:" w tym samym dniu: w pliku zabrakło nazwy następnego dnia
+            // (np. skan pominął linię). Zostaje pierwsza, dzień dostaje ostrzeżenie.
+            if (in_array($role, ['soup', 'main'], true) && !empty($labelSeen[$role])) {
+                $day['repeatedLabels'] = true;
+                continue;
+            }
+            $labelSeen[$role] = true;
             mp_append($day[$role], mp_ucfirst($content));
             continue;
         }
@@ -658,13 +814,28 @@ function mp_classify_lines(array $lines, array &$day) {
     }
 }
 
+// Treść w jednej linii z dniem: "Zupa: X / II danie: Y", "X; Y", kolumny z OCR
+function mp_split_inline($text) {
+    $parts = [];
+    foreach (preg_split('/\t+|\s+[\/|]\s+|\s*;\s*/u', $text) as $part) {
+        // Etykieta w środku fragmentu: "Zupa: X Drugie danie: Y"
+        $pieces = preg_split('/\s+(?=(?:zupa|zupy|I danie|II danie|Il danie|pierwsze danie|drugie danie|danie g[łl][óo]wne|deser|alergeny)\s*[:–—-])/iu', $part);
+        foreach ($pieces as $piece) {
+            if (trim($piece) !== '') $parts[] = trim($piece);
+        }
+    }
+    return $parts;
+}
+
 function mp_parse_lines(array $lines) {
     $days = [];
     $current = null;
+    $hint = null;
     foreach ($lines as $rawLine) {
         foreach (preg_split('/\R/u', (string) $rawLine) as $line) {
             $line = mp_clean_line($line);
             if ($line === '') continue;
+            $hint = mp_next_hint($line, $hint);
             if (mp_is_section_break($line)) {
                 if ($current !== null) $days[] = $current;
                 $current = null;
@@ -673,10 +844,10 @@ function mp_parse_lines(array $lines) {
             $anchor = mp_parse_anchor($line);
             if ($anchor) {
                 if ($current !== null) $days[] = $current;
-                $current = ['anchor' => $anchor, 'lines' => []];
+                $current = ['anchor' => $anchor, 'lines' => [], 'hint' => $hint];
                 // Treść w tej samej linii: kolumny z OCR (tabulatory, kilka spacji) albo " | "
                 if ($anchor['rest'] !== '') {
-                    foreach (preg_split('/\t+|\s\|\s/u',$anchor['rest']) as $part) {
+                    foreach (mp_split_inline($anchor['rest']) as $part) {
                         $current['lines'][] = $part;
                     }
                 }
@@ -693,7 +864,7 @@ function mp_parse_lines(array $lines) {
 
     $result = [];
     foreach ($days as $item) {
-        $day = mp_empty_day($item['anchor']);
+        $day = mp_empty_day($item['anchor'], $item['hint']);
         mp_classify_lines($item['lines'], $day);
         mp_mark_no_meal($day, $item['anchor']['rest']);
         $result[] = $day;
@@ -718,10 +889,20 @@ function mp_words_with_positions($line) {
 // Linia nagłówka tabeli ("DZIEŃ  ZUPA  DRUGIE DANIE  DESER  ALERGENY") -> początki kolumn
 function mp_header_columns(array $words) {
     $columns = [];
-    foreach ($words as $word) {
-        $role = mp_role($word['text']);
+    $count = count($words);
+    for ($i = 0; $i < $count; $i++) {
+        $role = mp_role($words[$i]['text']);
+        $position = $words[$i]['pos'];
+        // Nagłówki dwuwyrazowe: "II danie", "Danie główne" (słowa tuż obok siebie)
+        if ($i + 1 < $count && $words[$i + 1]['pos'] - ($position + mb_strlen($words[$i]['text'], 'UTF-8')) <= 2) {
+            $pairRole = mp_role($words[$i]['text'] . ' ' . $words[$i + 1]['text']);
+            if ($pairRole !== null && ($role === null || $role === $pairRole)) {
+                $role = $pairRole;
+                $i++;
+            }
+        }
         if (in_array($role, ['day', 'soup', 'main', 'dessert', 'allergens'], true) && !isset($columns[$role])) {
-            $columns[$role] = $word['pos'];
+            $columns[$role] = $position;
         }
     }
     if (count($columns) < 3) return null;
@@ -763,26 +944,85 @@ function mp_line_cells($line, array $columns) {
  */
 function mp_parse_fixed_width(array $lines) {
     $days = [];
-    $columns = null;
+    $columns = null;      // układ zwykły: rola => początek kolumny
+    $dayColumns = null;   // dni w kolumnach: 'label' => 0, numer kolumny => początek
+    $transposed = [];     // dni bieżącej tabeli z dniami w kolumnach
+    $rowRole = null;      // rola bieżącego wiersza w tej tabeli (zupa, drugie danie...)
     $current = null;
+    $hint = null;
+    $flush = function () use (&$days, &$current, &$transposed) {
+        if ($current !== null) $days[] = $current;
+        $current = null;
+        foreach ($transposed as $day) {
+            $days[] = $day;
+        }
+        $transposed = [];
+    };
+
     foreach ($lines as $rawLine) {
         $line = rtrim(str_replace("\t", '    ', (string) $rawLine));
         if (trim($line) === '') continue;
+        $hint = mp_next_hint($line, $hint);
         $words = mp_words_with_positions($line);
+
+        // Nagłówek z dniami w kolumnach: "        Poniedziałek 16.11      WTOREK 17.11 ..."
+        $dayHeader = mp_day_header_columns($line);
+        // W zwykłej tabeli (dni w wierszach) zmiana układu tylko przy wyraźnym wierszu z dniami
+        if ($dayHeader !== null && $columns !== null && count($dayHeader) < 3) $dayHeader = null;
+        if ($dayHeader !== null) {
+            $flush();
+            $columns = null;
+            $dayColumns = ['label' => 0];
+            foreach ($dayHeader as $c => $item) {
+                $dayColumns[$c] = $item['pos'];
+                $transposed[$c] = mp_empty_day($item['anchor'], $hint);
+            }
+            $rowRole = null;
+            continue;
+        }
         $header = mp_header_columns($words);
         if ($header !== null) {
-            if ($current !== null) $days[] = $current;
-            $current = null;
-            $columns = $header;
+            $flush();
+            $dayColumns = null;
+            // Tabele kolejnych tygodni mają zwykle ten sam układ: kolumnę, której nazwy
+            // zabrakło (np. OCR nie odczytał "II danie"), bierzemy z poprzedniego nagłówka
+            foreach ($lastHeader ?? [] as $role => $start) {
+                if (isset($header[$role])) continue;
+                $free = true;
+                foreach ($header as $otherStart) {
+                    if (abs($otherStart - $start) <= 3) $free = false;
+                }
+                if ($free) $header[$role] = $start;
+            }
+            asort($header);
+            $columns = $lastHeader = $header;
+            continue;
+        }
+        if (mp_is_section_break(trim($line))) {
+            $flush();
+            $columns = null;
+            $dayColumns = null;
+            continue;
+        }
+
+        if ($dayColumns !== null) {
+            $cells = mp_line_cells($line, $dayColumns);
+            $label = isset($cells['label']) ? implode(' ', $cells['label']) : '';
+            if ($label !== '') {
+                $role = mp_role($label);
+                $rowRole = in_array($role, ['soup', 'main', 'dessert', 'allergens'], true) ? $role : null;
+            }
+            if ($rowRole === null) continue;
+            foreach ($transposed as $c => &$day) {
+                if (!empty($cells[$c])) {
+                    $text = implode(' ', $cells[$c]);
+                    $day[$rowRole] = $day[$rowRole] === '' ? $text : $day[$rowRole] . ' ' . $text;
+                }
+            }
+            unset($day);
             continue;
         }
         if ($columns === null) continue;
-        if (mp_is_section_break(trim($line))) {
-            if ($current !== null) $days[] = $current;
-            $current = null;
-            $columns = null;
-            continue;
-        }
 
         $cells = mp_line_cells($line, $columns);
         $dayText = isset($cells['day']) ? implode(' ', $cells['day']) : '';
@@ -794,7 +1034,7 @@ function mp_parse_fixed_width(array $lines) {
             $current['anchor']['year'] = $anchor['year'];
         } elseif ($anchor) {
             if ($current !== null) $days[] = $current;
-            $current = mp_empty_day($anchor);
+            $current = mp_empty_day($anchor, $hint);
         }
         if ($current === null) continue;
         // Krótkie słowa ("g", "z") z końca zawiniętej linii drugiego dania, które
@@ -811,14 +1051,37 @@ function mp_parse_fixed_width(array $lines) {
             }
         }
     }
-    if ($current !== null) $days[] = $current;
+    $flush();
     foreach ($days as &$day) {
         if ($day['allergens'] !== '' && mp_is_allergen_list(str_replace(' ', '', $day['allergens']))) {
             $day['allergens'] = mp_clean_allergens($day['allergens']);
         }
         mp_mark_no_meal($day, $day['anchor']['rest']);
     }
+    unset($day);
     return $days;
+}
+
+// Linia z co najmniej dwoma dniami w osobnych kolumnach -> [kolumna => ['pos', 'anchor']]
+function mp_day_header_columns($line) {
+    preg_match_all('/\S+(?: \S+)*/u', $line, $segments, PREG_OFFSET_CAPTURE);
+    if (count($segments[0]) < 2) return null;
+    $found = [];
+    foreach ($segments[0] as $segment) {
+        if (mp_word_count($segment[0]) > 8) continue;
+        $anchor = mp_parse_anchor($segment[0], true);
+        if ($anchor === null) continue;
+        $last = count($found) - 1;
+        // "WTOREK  08.09" (sama nazwa dnia, a obok sama data) to jeden dzień, nie dwie kolumny
+        if ($last >= 0 && $found[$last]['anchor']['day'] === null && $anchor['weekday'] === null && $anchor['day'] !== null) {
+            $found[$last]['anchor']['day'] = $anchor['day'];
+            $found[$last]['anchor']['month'] = $anchor['month'];
+            $found[$last]['anchor']['year'] = $anchor['year'];
+            continue;
+        }
+        $found[] = ['pos' => mb_strlen(substr($line, 0, $segment[1]), 'UTF-8'), 'anchor' => $anchor];
+    }
+    return count($found) >= 2 ? $found : null;
 }
 
 // Cennik zapisany tekstem: linie z "zupa" / "danie" / "zestaw" i ceną
@@ -939,6 +1202,12 @@ function mp_finalize(array $raw, $docText, $source, array $prices) {
                 $mismatches[] = sprintf('%s (w jadłospisie „%s”, w kalendarzu %s)', mp_format_day($timestamp),
                     mb_strtolower($a['weekdayRaw'], 'UTF-8'), MP_WEEKDAY_LOWER[(int) date('N', $timestamp)]);
             }
+        } elseif (!empty($day['weekHint'])) {
+            // Sama nazwa dnia, ale nagłówek tygodnia podaje daty: dzień tego tygodnia
+            list($hintDay, $hintMonth) = $day['weekHint'];
+            $hintYear = $year + ($hintMonth - $month > 6 ? -1 : ($month - $hintMonth > 6 ? 1 : 0));
+            $base = mktime(12, 0, 0, $hintMonth, $hintDay, $hintYear);
+            $timestamp = $base + ($a['weekday'] - (int) date('N', $base)) * 86400;
         } else {
             // Sama nazwa dnia: najbliższy taki dzień po poprzednim (albo od początku miesiąca)
             $timestamp = $previous !== null ? $previous + 86400 : mktime(12, 0, 0, $month, 1, $year);
@@ -973,6 +1242,7 @@ function mp_finalize(array $raw, $docText, $source, array $prices) {
     $outside = [];
     $empty = [];
     $noMeal = [];
+    $repeated = [];
     foreach ($byDate as $day) {
         $label = mp_format_day($day['timestamp']);
         if ((int) date('n', $day['timestamp']) !== $month) {
@@ -987,6 +1257,7 @@ function mp_finalize(array $raw, $docText, $source, array $prices) {
             $empty[] = $label;
             continue;
         }
+        if (!empty($day['repeatedLabels'])) $repeated[] = $label;
         $days[] = [
             'date' => $label,
             'dayName' => MP_WEEKDAY_NAMES[(int) date('N', $day['timestamp'])],
@@ -1001,6 +1272,10 @@ function mp_finalize(array $raw, $docText, $source, array $prices) {
     if ($outside) $warnings[] = 'Pominięto dni spoza miesiąca: ' . implode(', ', $outside) . '.';
     if ($empty) $warnings[] = 'Nie znaleziono nazw dań dla: ' . implode(', ', $empty) . '.';
     if ($noMeal) $warnings[] = 'Dni bez obiadu według jadłospisu: ' . implode(', ', $noMeal) . '.';
+    if ($repeated) {
+        $warnings[] = 'W opisie dnia ' . implode(', ', $repeated) . ' jest kilka zup lub drugich dań. Prawdopodobnie w pliku '
+            . 'brakuje nazwy kolejnego dnia (np. nieczytelny fragment skanu). Pokazano pierwsze dania, sprawdź ten dzień.';
+    }
 
     // Dni robocze miesiąca, których w ogóle nie ma w jadłospisie
     $present = array_flip(array_merge(array_column($days, 'date'), array_map(function ($text) {
@@ -1031,9 +1306,11 @@ function mp_parse_docx($path, $source = 'docx') {
     if ($doc === null) return null;
     $prices = [];
     $raw = [];
-    foreach ($doc['tables'] as $grid) {
-        $raw = array_merge($raw, mp_parse_table($grid, $prices));
+    foreach ($doc['tables'] as $index => $grid) {
+        $raw = array_merge($raw, mp_parse_table($grid, $prices, $doc['tableHints'][$index] ?? null));
     }
+    // Cennik zapisany akapitami ("CENNIK", "Zupa – 8,50 zł"), gdy nie było go w tabeli
+    if (!$prices) $prices = mp_parse_text_prices($doc['lines']);
     $result = mp_finalize($raw, $doc['text'], $source, $prices);
     if ($result === null) {
         // Bez tabel z dniami: jadłospis w akapitach, punktach albo polach tekstowych
@@ -1046,10 +1323,50 @@ function mp_parse_text($text, $source = 'tekst') {
     $text = str_replace("\r", '', (string) $text);
     $lines = preg_split('/\n/u', $text);
     $prices = mp_parse_text_prices($lines);
-    // Najpierw tabela z zachowanymi odstępami (PDF), potem zwykłe linie
-    $result = mp_finalize(mp_parse_fixed_width($lines), $text, $source, $prices);
+
+    // Tabele z tabulatorami rozpoznajemy jak tabele z Worda, resztę po położeniu
+    // kolumn (tekst z PDF i OCR); kolejność dni w dokumencie zostaje zachowana
+    $raw = [];
+    $block = [];
+    $grid = [];
+    $hint = null;
+    foreach ($lines as $line) {
+        if (substr_count($line, "\t") >= 2) {
+            if ($block) {
+                $raw = array_merge($raw, mp_parse_fixed_width($block));
+                $block = [];
+            }
+            $grid[] = explode("\t", $line);
+            continue;
+        }
+        if ($grid) {
+            $raw = array_merge($raw, mp_parse_table(mp_text_grid($grid), $prices, $hint));
+            $grid = [];
+            $hint = null;
+        }
+        $hint = mp_next_hint($line, $hint);
+        $block[] = $line;
+    }
+    if ($grid) $raw = array_merge($raw, mp_parse_table(mp_text_grid($grid), $prices, $hint));
+    if ($block) $raw = array_merge($raw, mp_parse_fixed_width($block));
+
+    $result = mp_finalize($raw, $text, $source, $prices);
     if ($result === null) $result = mp_finalize(mp_parse_lines($lines), $text, $source, $prices);
     return $result;
+}
+
+// Wiersze tekstu podzielone tabulatorami -> siatka komórek jak z tabeli Worda
+function mp_text_grid(array $rows) {
+    $width = max(array_map('count', $rows));
+    $grid = [];
+    foreach ($rows as $row) {
+        $cells = [];
+        for ($c = 0; $c < $width; $c++) {
+            $cells[$c] = ['text' => trim($row[$c] ?? ''), 'span' => 1];
+        }
+        $grid[] = $cells;
+    }
+    return $grid;
 }
 
 // Typ pliku po zawartości (nie po rozszerzeniu nazwy)

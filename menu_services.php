@@ -252,8 +252,10 @@ function ms_convert_menu($path, array $keys) {
         if (!$result) $result = $tryText($cloud('text', '/convert/doc/to/txt'), 'doc->txt');
     } elseif ($type === 'pdf') {
         // Tekst z zachowanymi odstępami odtwarza kolumny tabeli lepiej niż PDF -> DOCX
-        $result = $tryText($cloud('text', '/convert/pdf/to/txt', ['textFormattingMode: preserveWhitespace']), 'pdf->txt');
-        if (!$result) {
+        $pdfText = $cloud('text', '/convert/pdf/to/txt', ['textFormattingMode: preserveWhitespace']);
+        $result = $tryText($pdfText, 'pdf->txt');
+        // Pusty tekst oznacza skan: PDF -> DOCX też nic nie da, od razu OCR (oszczędza limit)
+        if (!$result && $pdfText !== null && trim($pdfText) !== '') {
             $docx = $cloud('file', '/convert/pdf/to/docx');
             if ($docx) {
                 $result = $tryDocx($docx, 'pdf->docx');

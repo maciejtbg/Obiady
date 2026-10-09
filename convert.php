@@ -33,7 +33,7 @@ $tmpFile = $_FILES['file']['tmp_name'];
 $filename = $_FILES['file']['name'];
 
 // Zmiana tej wersji unieważnia zapamiętane wyniki po poprawkach parsera
-const MENU_CACHE_VERSION = 'v2';
+const MENU_CACHE_VERSION = 'v3';
 $cacheDir = __DIR__ . '/cache';
 $cacheFile = $cacheDir . '/' . sha1_file($tmpFile) . '-' . MENU_CACHE_VERSION . '.json';
 

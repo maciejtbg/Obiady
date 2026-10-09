@@ -1,0 +1,93 @@
+{
+    "Month": 12,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "07.12",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Fasolowa",
+            "drugieDanie": "Spaghetti bolognese z serem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "08.12",
+            "dayName": "WTOREK",
+            "zupa": "Pieczarkowa z makaronem",
+            "drugieDanie": "Spaghetti bolognese z serem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "09.12",
+            "dayName": "ŚRODA",
+            "zupa": "Krupnik z kaszą jęczmienną",
+            "drugieDanie": "Risotto z warzywami",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "10.12",
+            "dayName": "CZWARTEK",
+            "zupa": "Krupnik z kaszą jęczmienną",
+            "drugieDanie": "Risotto z warzywami",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "11.12",
+            "dayName": "PIĄTEK",
+            "zupa": "Grochówka",
+            "drugieDanie": "Spaghetti bolognese z serem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "14.12",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Placki ziemniaczane z jogurtem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "15.12",
+            "dayName": "WTOREK",
+            "zupa": "Kalafiorowa",
+            "drugieDanie": "Risotto z warzywami",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "16.12",
+            "dayName": "ŚRODA",
+            "zupa": "Kalafiorowa",
+            "drugieDanie": "Gulasz wołowy z kaszą gryczaną",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "17.12",
+            "dayName": "CZWARTEK",
+            "zupa": "Pieczarkowa z makaronem",
+            "drugieDanie": "Filet z miruny – 100 g, puree, marchewka z groszkiem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "18.12",
+            "dayName": "PIĄTEK",
+            "zupa": "Kapuśniak z młodej kapusty",
+            "drugieDanie": "Gołąbki w sosie pomidorowym",
+            "deser": "",
+            "alergeny": ""
+        }
+    ],
+    "Prices": {
+        "zupa": 8.5,
+        "drugie": 18.0
+    },
+    "Warnings": [
+        "Brak w jadłospisie: 01.12, 02.12, 03.12, 04.12, 21.12, 22.12, 23.12, 24.12, 25.12, 28.12, 29.12, 30.12, 31.12. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

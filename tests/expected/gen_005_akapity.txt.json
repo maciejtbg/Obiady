@@ -1,0 +1,93 @@
+{
+    "Month": 2,
+    "Year": 2027,
+    "Days": [
+        {
+            "date": "08.02",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa pieczarkowa z makaronem",
+            "drugieDanie": "Racuchy z jabłkiem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "09.02",
+            "dayName": "WTOREK",
+            "zupa": "Zupa rosół z makaronem",
+            "drugieDanie": "Gulasz wołowy z kaszą gryczaną",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "10.02",
+            "dayName": "ŚRODA",
+            "zupa": "Zupa grochówka",
+            "drugieDanie": "Leniwe pierogi z masłem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "11.02",
+            "dayName": "CZWARTEK",
+            "zupa": "Zupa pomidorowa z ryżem – 250 ml",
+            "drugieDanie": "Kurczak w sosie curry, ryż – 120 g",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "12.02",
+            "dayName": "PIĄTEK",
+            "zupa": "Zupa fasolowa",
+            "drugieDanie": "Gulasz wołowy z kaszą gryczaną",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "15.02",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa brokułowa",
+            "drugieDanie": "Naleśniki z serem i sosem truskawkowym",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "16.02",
+            "dayName": "WTOREK",
+            "zupa": "Zupa kapuśniak z młodej kapusty",
+            "drugieDanie": "Kurczak w sosie curry, ryż – 120 g",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "17.02",
+            "dayName": "ŚRODA",
+            "zupa": "Zupa jarzynowa zabielana – 250 ml",
+            "drugieDanie": "Kurczak w sosie curry, ryż – 120 g",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "18.02",
+            "dayName": "CZWARTEK",
+            "zupa": "Zupa kapuśniak z młodej kapusty",
+            "drugieDanie": "Leniwe pierogi z masłem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "19.02",
+            "dayName": "PIĄTEK",
+            "zupa": "Zupa koperkowa z ziemniakami",
+            "drugieDanie": "Gulasz wołowy z kaszą gryczaną",
+            "deser": "",
+            "alergeny": ""
+        }
+    ],
+    "Prices": {
+        "zupa": 8.5,
+        "drugie": 18.0
+    },
+    "Warnings": [
+        "Brak w jadłospisie: 01.02, 02.02, 03.02, 04.02, 05.02, 22.02, 23.02, 24.02, 25.02, 26.02. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

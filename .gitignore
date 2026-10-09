@@ -2,3 +2,5 @@ cloudmersive_config.php
 db_config.php
 ocr_config.php
 cache/
+tests/generator/cases/
+tests/generator/last_results.json

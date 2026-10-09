@@ -16,7 +16,8 @@ foreach (glob(__DIR__ . '/files/*') as $path) {
     ];
     $expectedFile = __DIR__ . '/expected/' . $name . '.json';
     if ($update) {
-        file_put_contents($expectedFile, json_encode($actual, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n");
+        // PRESERVE_ZERO_FRACTION: cena 18.0 zostaje liczbą zmiennoprzecinkową po odczycie wzorca
+        file_put_contents($expectedFile, json_encode($actual, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_PRESERVE_ZERO_FRACTION) . "\n");
         echo "zapisano wzorzec: $name\n";
         continue;
     }

@@ -1,0 +1,93 @@
+{
+    "Month": 11,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "16.11",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Barszcz czerwony z jajkiem",
+            "drugieDanie": "Kotlet mielony, ziemniaki, buraczki",
+            "deser": "Galaretka",
+            "alergeny": ""
+        },
+        {
+            "date": "17.11",
+            "dayName": "WTOREK",
+            "zupa": "Pomidorowa z ryżem – 250 ml",
+            "drugieDanie": "Gołąbki w sosie pomidorowym",
+            "deser": "Kisiel",
+            "alergeny": ""
+        },
+        {
+            "date": "18.11",
+            "dayName": "ŚRODA",
+            "zupa": "Kapuśniak z młodej kapusty",
+            "drugieDanie": "Gołąbki w sosie pomidorowym",
+            "deser": "Galaretka",
+            "alergeny": ""
+        },
+        {
+            "date": "19.11",
+            "dayName": "CZWARTEK",
+            "zupa": "Fasolowa",
+            "drugieDanie": "Naleśniki z serem i sosem truskawkowym",
+            "deser": "Banan",
+            "alergeny": ""
+        },
+        {
+            "date": "20.11",
+            "dayName": "PIĄTEK",
+            "zupa": "Pomidorowa z ryżem – 250 ml",
+            "drugieDanie": "Pierogi ruskie ze śmietaną",
+            "deser": "Banan",
+            "alergeny": ""
+        },
+        {
+            "date": "23.11",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Kalafiorowa",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka z kapusty",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "24.11",
+            "dayName": "WTOREK",
+            "zupa": "Fasolowa",
+            "drugieDanie": "Risotto z warzywami",
+            "deser": "Budyń waniliowy",
+            "alergeny": ""
+        },
+        {
+            "date": "25.11",
+            "dayName": "ŚRODA",
+            "zupa": "Barszcz czerwony z jajkiem",
+            "drugieDanie": "Kotlet mielony, ziemniaki, buraczki",
+            "deser": "Jabłko",
+            "alergeny": ""
+        },
+        {
+            "date": "26.11",
+            "dayName": "CZWARTEK",
+            "zupa": "Zupa szczawiowa z jajkiem",
+            "drugieDanie": "Kurczak w sosie curry, ryż – 120 g",
+            "deser": "Kisiel",
+            "alergeny": ""
+        },
+        {
+            "date": "27.11",
+            "dayName": "PIĄTEK",
+            "zupa": "Koperkowa z ziemniakami",
+            "drugieDanie": "Racuchy z jabłkiem",
+            "deser": "",
+            "alergeny": ""
+        }
+    ],
+    "Prices": {
+        "zupa": 8.5,
+        "drugie": 18.0
+    },
+    "Warnings": [
+        "Brak w jadłospisie: 02.11, 03.11, 04.11, 05.11, 06.11, 09.11, 10.11, 11.11, 12.11, 13.11, 30.11. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

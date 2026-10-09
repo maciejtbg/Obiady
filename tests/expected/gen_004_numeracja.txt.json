@@ -1,0 +1,86 @@
+{
+    "Month": 11,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "09.11",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Ogórkowa z ziemniakami – 250 ml",
+            "drugieDanie": "Leniwe pierogi z masłem",
+            "deser": "Budyń waniliowy",
+            "alergeny": ""
+        },
+        {
+            "date": "10.11",
+            "dayName": "WTOREK",
+            "zupa": "Krupnik z kaszą jęczmienną",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka z kapusty",
+            "deser": "Budyń waniliowy",
+            "alergeny": ""
+        },
+        {
+            "date": "12.11",
+            "dayName": "CZWARTEK",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Placki ziemniaczane z jogurtem",
+            "deser": "Galaretka",
+            "alergeny": ""
+        },
+        {
+            "date": "13.11",
+            "dayName": "PIĄTEK",
+            "zupa": "Krem z dyni z grzankami",
+            "drugieDanie": "Gulasz wołowy z kaszą gryczaną",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "16.11",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Kapuśniak z młodej kapusty",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka z kapusty",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "17.11",
+            "dayName": "WTOREK",
+            "zupa": "Kapuśniak z młodej kapusty",
+            "drugieDanie": "Gulasz wołowy z kaszą gryczaną",
+            "deser": "Kisiel",
+            "alergeny": ""
+        },
+        {
+            "date": "18.11",
+            "dayName": "ŚRODA",
+            "zupa": "Krupnik z kaszą jęczmienną",
+            "drugieDanie": "Ryba po grecku, ryż",
+            "deser": "Mus owocowy",
+            "alergeny": ""
+        },
+        {
+            "date": "19.11",
+            "dayName": "CZWARTEK",
+            "zupa": "Żurek z kiełbasą",
+            "drugieDanie": "Placki ziemniaczane z jogurtem",
+            "deser": "Budyń waniliowy",
+            "alergeny": ""
+        },
+        {
+            "date": "20.11",
+            "dayName": "PIĄTEK",
+            "zupa": "Kalafiorowa",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka z kapusty",
+            "deser": "Kisiel",
+            "alergeny": ""
+        }
+    ],
+    "Prices": {
+        "zupa": 8.5,
+        "drugie": 18.0
+    },
+    "Warnings": [
+        "Dni bez obiadu według jadłospisu: 11.11 (Dzień wolny – Święto Niepodległości).",
+        "Brak w jadłospisie: 02.11, 03.11, 04.11, 05.11, 06.11, 23.11, 24.11, 25.11, 26.11, 27.11, 30.11. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

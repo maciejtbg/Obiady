@@ -1,0 +1,93 @@
+{
+    "Month": 1,
+    "Year": 2027,
+    "Days": [
+        {
+            "date": "11.01",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Makaron z serem i szpinakiem",
+            "deser": "galaretka",
+            "alergeny": "7,9"
+        },
+        {
+            "date": "12.01",
+            "dayName": "WTOREK",
+            "zupa": "Kalafiorowa",
+            "drugieDanie": "Gołąbki w sosie pomidorowym",
+            "deser": "kisiel",
+            "alergeny": "3,9"
+        },
+        {
+            "date": "13.01",
+            "dayName": "ŚRODA",
+            "zupa": "Zupa porowa z ziemniakami",
+            "drugieDanie": "Naleśniki z serem i sosem truskawkowym",
+            "deser": "kisiel",
+            "alergeny": "1,3"
+        },
+        {
+            "date": "14.01",
+            "dayName": "CZWARTEK",
+            "zupa": "Krem z dyni z grzankami",
+            "drugieDanie": "Naleśniki z serem i sosem truskawkowym",
+            "deser": "kisiel",
+            "alergeny": "1,9"
+        },
+        {
+            "date": "15.01",
+            "dayName": "PIĄTEK",
+            "zupa": "Jarzynowa zabielana – 250 ml",
+            "drugieDanie": "Gołąbki w sosie pomidorowym",
+            "deser": "galaretka",
+            "alergeny": "1,4"
+        },
+        {
+            "date": "18.01",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Koperkowa z ziemniakami",
+            "drugieDanie": "Ryba po grecku, ryż",
+            "deser": "galaretka",
+            "alergeny": "3,7"
+        },
+        {
+            "date": "19.01",
+            "dayName": "WTOREK",
+            "zupa": "Brokułowa",
+            "drugieDanie": "Racuchy z jabłkiem",
+            "deser": "kisiel",
+            "alergeny": "1,9"
+        },
+        {
+            "date": "20.01",
+            "dayName": "ŚRODA",
+            "zupa": "Krupnik z kaszą jęczmienną",
+            "drugieDanie": "Leniwe pierogi z masłem",
+            "deser": "mus owocowy",
+            "alergeny": "1,7"
+        },
+        {
+            "date": "21.01",
+            "dayName": "CZWARTEK",
+            "zupa": "Jarzynowa zabielana – 250 ml",
+            "drugieDanie": "Placki ziemniaczane z jogurtem",
+            "deser": "mus owocowy",
+            "alergeny": "1,4"
+        },
+        {
+            "date": "22.01",
+            "dayName": "PIĄTEK",
+            "zupa": "Kapuśniak z młodej kapusty",
+            "drugieDanie": "Placki ziemniaczane z jogurtem",
+            "deser": "banan",
+            "alergeny": "3,7"
+        }
+    ],
+    "Prices": {
+        "zupa": 8.5,
+        "drugie": 18.0
+    },
+    "Warnings": [
+        "Brak w jadłospisie: 01.01, 04.01, 05.01, 06.01, 07.01, 08.01, 25.01, 26.01, 27.01, 28.01, 29.01. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

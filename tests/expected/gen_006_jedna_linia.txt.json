@@ -1,0 +1,94 @@
+{
+    "Month": 2,
+    "Year": 2027,
+    "Days": [
+        {
+            "date": "01.02",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa szczawiowa z jajkiem",
+            "drugieDanie": "Makaron z serem i szpinakiem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "02.02",
+            "dayName": "WTOREK",
+            "zupa": "Zupa szczawiowa z jajkiem",
+            "drugieDanie": "Kotlet mielony, ziemniaki, buraczki",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "03.02",
+            "dayName": "ŚRODA",
+            "zupa": "Zupa szczawiowa z jajkiem",
+            "drugieDanie": "Kurczak w sosie curry, ryż – 120 g",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "04.02",
+            "dayName": "CZWARTEK",
+            "zupa": "Kapuśniak z młodej kapusty",
+            "drugieDanie": "Makaron z serem i szpinakiem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "05.02",
+            "dayName": "PIĄTEK",
+            "zupa": "Koperkowa z ziemniakami",
+            "drugieDanie": "Ryba po grecku, ryż",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "08.02",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Krem z dyni z grzankami",
+            "drugieDanie": "Udko pieczone, frytki, surówka z marchewki",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "09.02",
+            "dayName": "WTOREK",
+            "zupa": "Kalafiorowa",
+            "drugieDanie": "Filet z miruny – 100 g, puree, marchewka z groszkiem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "10.02",
+            "dayName": "ŚRODA",
+            "zupa": "Pieczarkowa z makaronem",
+            "drugieDanie": "Gołąbki w sosie pomidorowym",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "11.02",
+            "dayName": "CZWARTEK",
+            "zupa": "Pieczarkowa z makaronem",
+            "drugieDanie": "Placki ziemniaczane z jogurtem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "12.02",
+            "dayName": "PIĄTEK",
+            "zupa": "Pieczarkowa z makaronem",
+            "drugieDanie": "Filet z miruny – 100 g, puree, marchewka z groszkiem",
+            "deser": "",
+            "alergeny": ""
+        }
+    ],
+    "Prices": {
+        "zupa": 8.5,
+        "drugie": 18.0
+    },
+    "Warnings": [
+        "Jadłospis nie podaje dat, ustalono je z nazw dni tygodnia: 05.02. Sprawdź, czy się zgadzają.",
+        "Brak w jadłospisie: 15.02, 16.02, 17.02, 18.02, 19.02, 22.02, 23.02, 24.02, 25.02, 26.02. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

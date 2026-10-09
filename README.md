@@ -38,3 +38,10 @@ PHP (ZipArchive, DOMDocument, cURL, MySQLi), Bootstrap, vanilla JS.
 - Baza danych: skopiuj `db_config.example.php` do `db_config.php` i uzupełnij prawdziwymi danymi (plik nie jest w repo — patrz `.gitignore`).
 - Klucz API Cloudmersive (pliki DOC i PDF): ustaw zmienną środowiskową `CLOUDMERSIVE_API_KEY` albo skopiuj `cloudmersive_config.example.php` do `cloudmersive_config.php` i wpisz tam swój klucz.
 - Klucz OCR.space (skany i zdjęcia, darmowy, rejestracja e-mailem na ocr.space/ocrapi): ustaw `OCR_SPACE_API_KEY` albo skopiuj `ocr_config.example.php` do `ocr_config.php`.
+
+## Testy parsera
+
+- `php tests/run_tests.php` porównuje wynik parsera dla plików z `tests/files` ze wzorcami w `tests/expected` (`--update` zapisuje nowe wzorce po świadomej zmianie parsera).
+- `tests/generator/` tworzy losowe jadłospisy w 8 układach (tabela, dni w kolumnach, punkty, myślniki, numeracja, akapity, jedna linia na dzień, bez dat) z błędami w nazwach dni i datach (np. „Po nie działek”, „Wtroek”, „1O.02”, „15,01”, „11-go stycznia”) i sprawdza, czy parser je odczytuje:
+  - `python tests/generator/generuj_jadlospisy.py 200` (wymaga `pip install python-docx`),
+  - `python tests/generator/sprawdz_parser.py docx,txt` (PHP z PATH albo ze zmiennej `PHP`); z `--services` albo `--ocr` sprawdza też pliki PDF, DOC i zdjęcia przez Cloudmersive i OCR.space.

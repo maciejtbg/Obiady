@@ -1,0 +1,86 @@
+{
+    "Month": 10,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "05.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Krupnik z kaszą jęczmienną",
+            "drugieDanie": "Kotlet mielony, ziemniaki, buraczki",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "06.10",
+            "dayName": "WTOREK",
+            "zupa": "Krem z dyni z grzankami",
+            "drugieDanie": "Kurczak w sosie curry, ryż – 120 g",
+            "deser": "Galaretka",
+            "alergeny": ""
+        },
+        {
+            "date": "07.10",
+            "dayName": "ŚRODA",
+            "zupa": "Koperkowa z ziemniakami",
+            "drugieDanie": "Leniwe pierogi z masłem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "08.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Brokułowa",
+            "drugieDanie": "Racuchy z jabłkiem",
+            "deser": "Kisiel",
+            "alergeny": ""
+        },
+        {
+            "date": "09.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Pieczarkowa z makaronem",
+            "drugieDanie": "Udko pieczone, frytki, surówka z marchewki",
+            "deser": "Kisiel",
+            "alergeny": ""
+        },
+        {
+            "date": "12.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa porowa z ziemniakami",
+            "drugieDanie": "Gulasz wołowy z kaszą gryczaną",
+            "deser": "Galaretka",
+            "alergeny": ""
+        },
+        {
+            "date": "13.10",
+            "dayName": "WTOREK",
+            "zupa": "Grochówka",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka z kapusty",
+            "deser": "Banan",
+            "alergeny": ""
+        },
+        {
+            "date": "15.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Barszcz czerwony z jajkiem",
+            "drugieDanie": "Racuchy z jabłkiem",
+            "deser": "Galaretka",
+            "alergeny": ""
+        },
+        {
+            "date": "16.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Brokułowa",
+            "drugieDanie": "Risotto z warzywami",
+            "deser": "Mus owocowy",
+            "alergeny": ""
+        }
+    ],
+    "Prices": {
+        "zupa": 8.5,
+        "drugie": 18.0
+    },
+    "Warnings": [
+        "Dni bez obiadu według jadłospisu: 14.10 (Dzień wolny – Dzień Edukacji Narodowej).",
+        "Brak w jadłospisie: 01.10, 02.10, 19.10, 20.10, 21.10, 22.10, 23.10, 26.10, 27.10, 28.10, 29.10, 30.10. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

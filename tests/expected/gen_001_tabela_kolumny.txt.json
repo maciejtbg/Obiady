@@ -1,0 +1,93 @@
+{
+    "Month": 11,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "16.11",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Krupnik z kaszą jęczmienną",
+            "drugieDanie": "Makaron z serem i szpinakiem",
+            "deser": "jabłko",
+            "alergeny": ""
+        },
+        {
+            "date": "17.11",
+            "dayName": "WTOREK",
+            "zupa": "Zupa szczawiowa z jajkiem",
+            "drugieDanie": "Leniwe pierogi z masłem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "18.11",
+            "dayName": "ŚRODA",
+            "zupa": "Zupa szczawiowa z jajkiem",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka z kapusty",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "19.11",
+            "dayName": "CZWARTEK",
+            "zupa": "Pomidorowa z ryżem – 250 ml",
+            "drugieDanie": "Udko pieczone, frytki, surówka z marchewki",
+            "deser": "kisiel",
+            "alergeny": ""
+        },
+        {
+            "date": "20.11",
+            "dayName": "PIĄTEK",
+            "zupa": "Jarzynowa zabielana – 250 ml",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka z kapusty",
+            "deser": "jabłko",
+            "alergeny": ""
+        },
+        {
+            "date": "23.11",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Fasolowa",
+            "drugieDanie": "Kurczak w sosie curry, ryż – 120 g",
+            "deser": "budyń waniliowy",
+            "alergeny": ""
+        },
+        {
+            "date": "24.11",
+            "dayName": "WTOREK",
+            "zupa": "Brokułowa",
+            "drugieDanie": "Gołąbki w sosie pomidorowym",
+            "deser": "galaretka",
+            "alergeny": ""
+        },
+        {
+            "date": "25.11",
+            "dayName": "ŚRODA",
+            "zupa": "Grochówka",
+            "drugieDanie": "Placki ziemniaczane z jogurtem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "26.11",
+            "dayName": "CZWARTEK",
+            "zupa": "Pomidorowa z ryżem – 250 ml",
+            "drugieDanie": "Risotto z warzywami",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "27.11",
+            "dayName": "PIĄTEK",
+            "zupa": "Żurek z kiełbasą",
+            "drugieDanie": "Pulpety w sosie koperkowym, ziemniaki",
+            "deser": "jabłko",
+            "alergeny": ""
+        }
+    ],
+    "Prices": {
+        "zupa": 8.5,
+        "drugie": 18.0
+    },
+    "Warnings": [
+        "Brak w jadłospisie: 02.11, 03.11, 04.11, 05.11, 06.11, 09.11, 10.11, 11.11, 12.11, 13.11, 30.11. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}
