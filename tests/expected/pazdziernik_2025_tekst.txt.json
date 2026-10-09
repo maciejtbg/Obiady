@@ -1,0 +1,186 @@
+{
+    "Month": 10,
+    "Year": 2025,
+    "Days": [
+        {
+            "date": "01.10",
+            "dayName": "ŚRODA",
+            "zupa": "Fasolowa z zielonej fasolki",
+            "drugieDanie": "Pulpety w sosie koperkowym, kasza bulgur, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "02.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Kapuśniak z młodej kapusty",
+            "drugieDanie": "Pierogi Ruskie",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "03.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Krupnik z kaszy jęczmiennej z ziemniakami",
+            "drugieDanie": "Kotlet rybny, ziemniaki puree, surówka",
+            "deser": "deser",
+            "alergeny": ""
+        },
+        {
+            "date": "06.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Krem warzywny",
+            "drugieDanie": "Kurczak z warzywami z makaronem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "07.10",
+            "dayName": "WTOREK",
+            "zupa": "Ogórkowa",
+            "drugieDanie": "Gulasz z szynki, kasza , surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "08.10",
+            "dayName": "ŚRODA",
+            "zupa": "Wielowarzywna",
+            "drugieDanie": "Burgery z kotletem mielonym i warzywami",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "09.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Kotlet drobiowy, ziemniaki, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "10.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Pomidorowa z ryżem",
+            "drugieDanie": "Stripsy serowe, ziemniak puree, surówka",
+            "deser": "deser",
+            "alergeny": ""
+        },
+        {
+            "date": "13.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Buraczkowa zabielana",
+            "drugieDanie": "Makaron z sosem bolognese",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "15.10",
+            "dayName": "ŚRODA",
+            "zupa": "Kalafiorowa z ziemniakami",
+            "drugieDanie": "Kurczak na parze z mini marchewką , ryż",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "16.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Minestrone-warzywna",
+            "drugieDanie": "Placki z jabłkiem i marchewką z cukrem pudrem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "17.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Neapolitańska(serowa)",
+            "drugieDanie": "Naleśniki z twarogiem i sosem waniliowym",
+            "deser": "deser",
+            "alergeny": ""
+        },
+        {
+            "date": "20.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa Pomidorowa z makaronem",
+            "drugieDanie": "Pierogi z mięsem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "21.10",
+            "dayName": "WTOREK",
+            "zupa": "Marchewkowa",
+            "drugieDanie": "Frykadelki z indyka, Ryż z warzywami, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "22.10",
+            "dayName": "ŚRODA",
+            "zupa": "Kapuśniak z pomidorami",
+            "drugieDanie": "Nugetsy z kurczaka, ziemniak puree, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "23.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Racuchy drożdżowe z jabłkiem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "24.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Zupa Pieczarkowa z makaronem",
+            "drugieDanie": "Kotlet jajeczny, ziemniaki, surówka",
+            "deser": "deser",
+            "alergeny": ""
+        },
+        {
+            "date": "27.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Ogórkowa",
+            "drugieDanie": "Makaron z kurczakiem w sosie pomidorowym",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "28.10",
+            "dayName": "WTOREK",
+            "zupa": "Zupa Pomidorowa z makaronem",
+            "drugieDanie": "Stripsy z kurczaka, ziemniaki, puree, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "29.10",
+            "dayName": "ŚRODA",
+            "zupa": "Zupa Rosół z makaronem",
+            "drugieDanie": "Gyros w tortilli z kurczakiem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "30.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Kalafiorowa",
+            "drugieDanie": "Schab panierowany, ziemniaki, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "31.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Zupa Krupnik",
+            "drugieDanie": "Pierogi z owocami",
+            "deser": "deser",
+            "alergeny": ""
+        }
+    ],
+    "Prices": null,
+    "Warnings": [
+        "Brak w jadłospisie: 14.10. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

@@ -1,0 +1,50 @@
+{
+    "Month": 10,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "19.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa pomidorowa z ryżem",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka",
+            "deser": "Owoc sezonowy",
+            "alergeny": ""
+        },
+        {
+            "date": "20.10",
+            "dayName": "WTOREK",
+            "zupa": "Krupnik z ziemniakami",
+            "drugieDanie": "Spaghetti bolognese",
+            "deser": "Owoc sezonowy",
+            "alergeny": ""
+        },
+        {
+            "date": "21.10",
+            "dayName": "ŚRODA",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Pierogi ruskie ze śmietaną",
+            "deser": "Owoc sezonowy",
+            "alergeny": ""
+        },
+        {
+            "date": "22.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Barszcz czerwony",
+            "drugieDanie": "Filet z miruny, puree, marchewka",
+            "deser": "Owoc sezonowy",
+            "alergeny": ""
+        },
+        {
+            "date": "23.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Ogórkowa z koperkiem",
+            "drugieDanie": "Naleśniki z serem",
+            "deser": "Owoc sezonowy",
+            "alergeny": ""
+        }
+    ],
+    "Prices": null,
+    "Warnings": [
+        "Brak w jadłospisie: 01.10, 02.10, 05.10, 06.10, 07.10, 08.10, 09.10, 12.10, 13.10, 14.10, 15.10, 16.10, 26.10, 27.10, 28.10, 29.10, 30.10. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

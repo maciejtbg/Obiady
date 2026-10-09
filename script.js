@@ -663,7 +663,10 @@ function uploadAndConvert(file) {
         if (toggleDebugCheckbox.checked) {
           debugBox.innerHTML += '<br>❌ Konwersja nieudana: ' + (data.Error || 'Nieznany błąd');
         }
-        document.getElementById('warningBox').classList.remove('d-none');
+        // Serwer podaje konkretny powód (np. nieobsługiwany format, nieczytelne zdjęcie)
+        const warningBox = document.getElementById('warningBox');
+        warningBox.textContent = data.Error || 'Zawartość pliku nie jest zgodna z oczekiwaniami!';
+        warningBox.classList.remove('d-none');
       }
     })
     .catch(error => {
@@ -693,20 +696,47 @@ function updateDishVisualState(cell, isChecked) {
 }
 
 // -------------------------------------------------------------------
-// Nowa ścieżka: jadłospis rozpoznany bezpośrednio z tabel w pliku .docx
-// (dane.Format === 'table', patrz convert.php -> parseMenuDocxTables).
-// Dużo prostsza i pewniejsza niż parsowanie linii tekstu, bo granice
-// "zupa / drugie danie / deser / alergeny" są już znane z komórek tabeli.
+// Nowa ścieżka: jadłospis rozpoznany na serwerze (dane.Format === 'table',
+// patrz menu_parser.php). Dni, dania, miesiąc i rok są już gotowe, a uwagi
+// parsera (np. brakujące dni, daty wyliczone z nazw dni) są w dane.Warnings.
 // -------------------------------------------------------------------
+
+// Rok jadłospisu podany przez serwer (ważne dla starszych jadłospisów z historii);
+// bez niego rok wyliczamy jak dawniej z dzisiejszej daty
+let menuYearFromFile = null;
+
+function showParseWarnings(warnings) {
+  const box = document.getElementById('parseWarnings');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!warnings || !warnings.length) {
+    box.classList.add('d-none');
+    return;
+  }
+  const title = document.createElement('strong');
+  title.textContent = 'Sprawdź jadłospis:';
+  const list = document.createElement('ul');
+  warnings.forEach(text => {
+    const item = document.createElement('li');
+    item.textContent = text;
+    list.appendChild(item);
+  });
+  box.append(title, list);
+  box.classList.remove('d-none');
+}
+
 function parseMenuFromTableData(dane, ctx) {
   const { debugEnabled, debugBox, menuTableBody } = ctx;
 
   try {
     menuTableBody.innerHTML = '';
+    menuYearFromFile = Number(dane.Year) || null;
+    showParseWarnings(dane.Warnings);
+    document.getElementById('warningBox')?.classList.add('d-none');
 
     const parsedDates = {};
-    let monthNumber = 0;
-    let monthName = '';
+    let monthNumber = Number(dane.Month) || 0;
+    let monthName = getMonthName(monthNumber);
 
     dane.Days.forEach(d => {
       const parts = String(d.date || '').split('.');
@@ -714,8 +744,10 @@ function parseMenuFromTableData(dane, ctx) {
       const day = parts[0].padStart(2, '0');
       const month = parts[1].padStart(2, '0');
       const dateKey = `${day}.${month}`;
-      monthNumber = parseInt(month, 10) || monthNumber;
-      monthName = getMonthName(monthNumber) || monthName;
+      if (!dane.Month) {
+        monthNumber = parseInt(month, 10) || monthNumber;
+        monthName = getMonthName(monthNumber) || monthName;
+      }
 
       parsedDates[dateKey] = {
         pierwszeDanie: (d.zupa || '').trim() || null,
@@ -780,6 +812,8 @@ function parseMenu(jsonTekst) {
       parseMenuFromTableData(dane, { debugEnabled, debugBox, menuTableBody });
       return;
     }
+    menuYearFromFile = null;
+    showParseWarnings([]);
 
     if (!dane || !dane.Successful || !dane.TextResult) {
       document.getElementById('warningBox')?.classList.remove('d-none');
@@ -919,8 +953,9 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
       console.log(`  ✅ Ten sam miesiąc - używam bieżącego roku: ${targetYear}`);
     }
 
+    if (menuYearFromFile) targetYear = menuYearFromFile;
     const monthString = String(monthNumber).padStart(2, '0');
-    
+
     const firstDayOfMonth = new Date(targetYear, monthNumber - 1, 1);
     const lastDayOfMonth = new Date(targetYear, monthNumber, 0);
 
@@ -1163,6 +1198,50 @@ rows.forEach(row => {
   updateSummary();
 }
 
+// Małe litery bez polskich znaków ("Naleśniki" -> "nalesniki")
+function foldText(text) {
+  return String(text).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
+}
+
+// Czy słowa różnią się najwyżej jedną literą (zamiana, brak albo nadmiar)
+function withinOneEdit(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++;
+    else if (a.length < b.length) j++;
+    else {
+      i++;
+      j++;
+    }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+// Słowo kluczowe ze słownika pasuje, gdy każde jego słowo występuje w nazwie
+// dania bez polskich znaków albo z jedną literówką (dla słów od 5 liter)
+function findKeywordDefinitionFuzzy(dishText) {
+  const dishFolded = foldText(dishText);
+  const dishWords = dishFolded.split(/[^a-z0-9]+/).filter(Boolean);
+  for (const keyword in keywordDefinitions) {
+    const keyFolded = foldText(keyword);
+    if (dishFolded.includes(keyFolded)) return keywordDefinitions[keyword];
+    const keyWords = keyFolded.split(/[^a-z0-9]+/).filter(Boolean);
+    const matches = keyWords.length > 0 && keyWords.every(key =>
+      dishWords.some(word => word === key || (key.length >= 5 && withinOneEdit(word, key))));
+    if (matches) return keywordDefinitions[keyword];
+  }
+  return null;
+}
+
 async function attachTooltipListeners() {
   if (window.innerWidth <= 768) {
     return;
@@ -1197,6 +1276,11 @@ async function attachTooltipListeners() {
           break;
         }
       }
+    }
+
+    // 2b. To samo bez polskich znaków i z tolerancją na literówkę
+    if (!definition) {
+      definition = findKeywordDefinitionFuzzy(dishText);
     }
 
     // 3. Jeśli brak - pobierz z Wikipedia i AUTOMATYCZNIE dodaj do pliku
@@ -1499,7 +1583,8 @@ function generateDeclaration() {
       targetYear = currentYear - 1;
     }
   }
-  
+  if (menuYearFromFile) targetYear = menuYearFromFile;
+
   rows.forEach(r => {
     const dateText = (r.cells[1] && r.cells[1].textContent) ? r.cells[1].textContent.trim() : '';
     if (!dateText) {
@@ -2037,6 +2122,8 @@ function getMonthYear() {
     }
   }
   
+  if (menuYearFromFile) targetYear = menuYearFromFile;
+
   // Nazwy miesięcy w MIANOWNIKU (nieodmienione)
   const monthNames = ['', 'STYCZEŃ', 'LUTY', 'MARZEC', 'KWIECIEŃ', 'MAJ', 'CZERWIEC', 
                       'LIPIEC', 'SIERPIEŃ', 'WRZESIEŃ', 'PAŹDZIERNIK', 'LISTOPAD', 'GRUDZIEŃ'];
@@ -2781,7 +2868,7 @@ window.addEventListener('resize', function() {
         if (dateParts.length === 2) {
           const day = parseInt(dateParts[0]);
           const month = parseInt(dateParts[1]);
-          const year = new Date().getFullYear();
+          const year = menuYearFromFile || new Date().getFullYear();
           const date = new Date(year, month - 1, day);
           dayCell.textContent = getDayOfWeekPL(date.getDay(), window.innerWidth <= 768);
         }

@@ -1,0 +1,107 @@
+{
+    "Month": 10,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "01.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Zupa pomidorowa z ryżem",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "02.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Krupnik z ziemniakami",
+            "drugieDanie": "Spaghetti bolognese",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "05.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa pomidorowa z ryżem",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "06.10",
+            "dayName": "WTOREK",
+            "zupa": "Krupnik z ziemniakami",
+            "drugieDanie": "Spaghetti bolognese",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "07.10",
+            "dayName": "ŚRODA",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Pierogi ruskie ze śmietaną",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "08.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Barszcz czerwony",
+            "drugieDanie": "Filet z miruny, puree, marchewka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "09.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Ogórkowa z koperkiem",
+            "drugieDanie": "Naleśniki z serem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "12.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa pomidorowa z ryżem",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "13.10",
+            "dayName": "WTOREK",
+            "zupa": "Krupnik z ziemniakami",
+            "drugieDanie": "Spaghetti bolognese",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "14.10",
+            "dayName": "ŚRODA",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Pierogi ruskie ze śmietaną",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "15.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Barszcz czerwony",
+            "drugieDanie": "Filet z miruny, puree, marchewka",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "16.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Ogórkowa z koperkiem",
+            "drugieDanie": "Naleśniki z serem",
+            "deser": "",
+            "alergeny": ""
+        }
+    ],
+    "Prices": null,
+    "Warnings": [
+        "Jadłospis nie podaje dat, ustalono je z nazw dni tygodnia: 01.10, 02.10, 05.10, 06.10, 07.10, 08.10, 09.10, 12.10, 13.10, 14.10, 15.10, 16.10. Sprawdź, czy się zgadzają.",
+        "Brak w jadłospisie: 19.10, 20.10, 21.10, 22.10, 23.10, 26.10, 27.10, 28.10, 29.10, 30.10. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

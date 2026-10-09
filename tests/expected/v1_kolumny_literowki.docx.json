@@ -1,0 +1,76 @@
+{
+    "Month": 10,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "05.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa pomidorowa z ryżem",
+            "drugieDanie": "Kotlet schabowy, ziemniaki, surówka",
+            "deser": "",
+            "alergeny": "1,7"
+        },
+        {
+            "date": "06.10",
+            "dayName": "WTOREK",
+            "zupa": "Krupnik z ziemniakami",
+            "drugieDanie": "Spaghetti bolognese",
+            "deser": "jabłko",
+            "alergeny": "1,3"
+        },
+        {
+            "date": "07.10",
+            "dayName": "ŚRODA",
+            "zupa": "Rosół z makaronem",
+            "drugieDanie": "Pierogi ruskie ze śmietaną",
+            "deser": "",
+            "alergeny": "1,7,9"
+        },
+        {
+            "date": "08.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Barszcz czerwony",
+            "drugieDanie": "Filet z miruny, puree, marchewka",
+            "deser": "",
+            "alergeny": "4"
+        },
+        {
+            "date": "09.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Ogórkowa z koperkiem",
+            "drugieDanie": "Naleśniki z serem",
+            "deser": "kisiel",
+            "alergeny": "1,3,7"
+        },
+        {
+            "date": "12.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Zupa pomidorowa z ryżem",
+            "drugieDanie": "Spaghetti bolognese",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "13.10",
+            "dayName": "WTOREK",
+            "zupa": "Krupnik z ziemniakami",
+            "drugieDanie": "Pierogi ruskie ze śmietaną",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "16.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Barszcz czerwony",
+            "drugieDanie": "Filet z miruny, puree, marchewka",
+            "deser": "",
+            "alergeny": ""
+        }
+    ],
+    "Prices": null,
+    "Warnings": [
+        "Nazwa dnia nie zgadza się z datą: 16.10 (w jadłospisie „czwartek”, w kalendarzu piątek). Przyjęto datę.",
+        "Dni bez obiadu według jadłospisu: 14.10 (DZIEŃ WOLNY - Dzień Edukacji Narodowej).",
+        "Brak w jadłospisie: 01.10, 02.10, 15.10, 19.10, 20.10, 21.10, 22.10, 23.10, 26.10, 27.10, 28.10, 29.10, 30.10. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}

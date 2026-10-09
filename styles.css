@@ -681,6 +681,25 @@ body.dark-theme .icon-moon {
   color: var(--primary);
 }
 
+/* Uwagi parsera do wczytanego jadłospisu (menu_parser.php -> Warnings) */
+.parse-warnings {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--soup);
+  border-radius: var(--radius);
+  background: var(--soup-soft);
+  font-size: 0.88rem;
+}
+
+.parse-warnings ul {
+  margin: 6px 0 0;
+  padding-left: 1.1rem;
+}
+
+.parse-warnings li + li {
+  margin-top: 4px;
+}
+
 .history {
   margin-top: 22px;
 }

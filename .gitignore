@@ -1,2 +1,4 @@
 cloudmersive_config.php
 db_config.php
+ocr_config.php
+cache/

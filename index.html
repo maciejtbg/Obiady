@@ -203,7 +203,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
           <span class="step-badge">1</span>
           <div>
             <h2 class="panel-title">Wczytaj jadłospis</h2>
-            <p class="panel-sub">Plik Word (.doc lub .docx) z jadłospisem na dany miesiąc</p>
+            <p class="panel-sub">Word, PDF albo zdjęcie jadłospisu na dany miesiąc</p>
           </div>
         </header>
 
@@ -213,7 +213,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
             <span class="dropzone-title" id="dropzoneTitle">Wybierz plik z jadłospisem</span>
             <span class="dropzone-hint">Po wybraniu pliku menu wczyta się samo<span class="drop-only">, możesz go też tu upuścić</span></span>
           </span>
-          <input type="file" id="fileInput" class="visually-hidden" accept=".doc,.docx">
+          <input type="file" id="fileInput" class="visually-hidden" accept=".doc,.docx,.pdf,.jpg,.jpeg,.png,.txt">
         </label>
 
         <div class="d-flex gap-2 flex-wrap mt-3">
@@ -235,6 +235,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
           <button class="expand-btn d-none" id="expandHistoryBtn">Pokaż więcej...</button>
         </div>
 
+        <div id="parseWarnings" class="parse-warnings d-none" role="status"></div>
         <div id="debugBox" class="alert alert-info d-none mt-3"></div>
         <div id="warningBox" class="alert alert-warning d-none mt-3">Zawartość pliku nie jest zgodna z oczekiwaniami!</div>
       </section>
@@ -373,7 +374,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
         <section class="panel tips">
           <h2 class="panel-title">Jak to działa?</h2>
           <ol class="tips-list">
-            <li>Wybierz plik z jadłospisem. Dni i dania wczytają się same.</li>
+            <li>Wybierz plik z jadłospisem (Word, PDF albo zdjęcie). Dni i dania wczytają się same.</li>
             <li>Odznacz dania, których dziecko nie będzie jeść. Koszt policzy się automatycznie.</li>
             <li>Wygeneruj deklarację i wyślij ją e-mailem albo zapisz jako PDF.</li>
           </ol>

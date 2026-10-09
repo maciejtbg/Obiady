@@ -1,0 +1,50 @@
+{
+    "Month": 10,
+    "Year": 2026,
+    "Days": [
+        {
+            "date": "26.10",
+            "dayName": "PONIEDZIAŁEK",
+            "zupa": "Żurek z jajkiem",
+            "drugieDanie": "Gulasz wołowy z kaszą",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "27.10",
+            "dayName": "WTOREK",
+            "zupa": "Kapuśniak",
+            "drugieDanie": "Kurczak w sosie curry, ryż",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "28.10",
+            "dayName": "ŚRODA",
+            "zupa": "Grochówka",
+            "drugieDanie": "Placki ziemniaczane",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "29.10",
+            "dayName": "CZWARTEK",
+            "zupa": "Koperkowa",
+            "drugieDanie": "Makaron z serem",
+            "deser": "",
+            "alergeny": ""
+        },
+        {
+            "date": "30.10",
+            "dayName": "PIĄTEK",
+            "zupa": "Pomidorowa",
+            "drugieDanie": "Ryba w panierce, ziemniaki",
+            "deser": "",
+            "alergeny": ""
+        }
+    ],
+    "Prices": null,
+    "Warnings": [
+        "Brak w jadłospisie: 01.10, 02.10, 05.10, 06.10, 07.10, 08.10, 09.10, 12.10, 13.10, 14.10, 15.10, 16.10, 19.10, 20.10, 21.10, 22.10, 23.10. Te dni będą oznaczone jako dni bez obiadu."
+    ]
+}
