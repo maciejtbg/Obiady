@@ -2993,19 +2993,30 @@ function updateMobileButtonState(column) {
 // ============================================
 // CZĘŚĆ 16: KALENDARZ NA LODÓWKĘ (TXT, DOCX, PDF)
 // ============================================
-// Miesięczny kalendarz dni szkolnych (pon-pt) z zamówionymi daniami.
-// Na pierwszy rzut oka widać, kiedy dziecko je obiad w szkole,
-// a kiedy trzeba mu spakować kanapkę.
+// Miesięczny kalendarz dni szkolnych (pon-pt): w które dni dziecko ma
+// zamówioną zupę i/lub drugie danie. Opcjonalnie z nazwami dań.
 
 const FRIDGE_STATUSES = {
-  full:     { label: 'ZUPA + DRUGIE', legend: 'zupa i drugie danie',         fill: 'D4EDDA', color: '155724' },
-  main:     { label: 'DRUGIE DANIE',  legend: 'tylko drugie danie',          fill: 'D1ECF1', color: '0C5460' },
-  soup:     { label: 'TYLKO ZUPA',    legend: 'tylko zupa',                  fill: 'FFF3CD', color: '856404' },
-  sandwich: { label: 'KANAPKA',       legend: 'brak obiadu, spakuj kanapkę', fill: 'F8D7DA', color: '721C24' },
-  none:     { label: 'BRAK OBIADÓW',  legend: 'brak obiadów w jadłospisie',  fill: 'E9ECEF', color: '495057' }
+  full:    { label: 'Zupa + drugie danie',     fill: 'E3F5EA', accent: '1F9D63' },
+  main:    { label: 'Tylko drugie danie',      fill: 'E5EEFC', accent: '2F74E0' },
+  soup:    { label: 'Tylko zupa',              fill: 'FDF0D9', accent: 'B9740A' },
+  nothing: { label: 'Nic nie wybrano',         fill: 'FFFFFF', accent: '6B7A72' },
+  none:    { label: 'Dzień bez obiadu w menu', fill: 'EEF1ED', accent: '6B7A72' }
+};
+
+const FRIDGE_DISHES = {
+  soup: { label: 'Zupa', color: 'D98B0F' },
+  main: { label: 'Drugie danie', color: '2F74E0' }
 };
 
 const FRIDGE_WEEKDAYS = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek'];
+const FRIDGE_DETAIL_KEY = 'fridge_calendar_detail';
+
+// Zapamiętany wybór "z nazwami dań / bez nazw"
+document.querySelectorAll('input[name="fridgeDetail"]').forEach(input => {
+  if (input.value === localStorage.getItem(FRIDGE_DETAIL_KEY)) input.checked = true;
+  input.addEventListener('change', () => localStorage.setItem(FRIDGE_DETAIL_KEY, input.value));
+});
 
 async function downloadFridgeCalendar(format) {
   const cal = collectFridgeCalendar();
@@ -3013,6 +3024,7 @@ async function downloadFridgeCalendar(format) {
     alert('❌ Najpierw wczytaj jadłospis i wybierz obiady!');
     return;
   }
+  cal.withNames = document.querySelector('input[name="fridgeDetail"]:checked')?.value === 'names';
 
   try {
     const fileName = getFridgeCalendarFileName(cal, format);
@@ -3043,7 +3055,7 @@ function collectFridgeCalendar() {
   // Rok bierzemy z getMonthYear(), żeby zgadzał się z deklaracją
   const year = parseInt(monthYear.split(' ').pop(), 10);
   const weeks = [];
-  const counts = { full: 0, main: 0, soup: 0, sandwich: 0, none: 0 };
+  const counts = { full: 0, main: 0, soup: 0, nothing: 0, none: 0 };
   let week = null;
   let lastWeekday = 0;
 
@@ -3058,7 +3070,7 @@ function collectFridgeCalendar() {
     const checkboxes = row.querySelectorAll('input[type="checkbox"]');
     const soupChecked = !!checkboxes[0]?.checked;
     const mainChecked = !!checkboxes[1]?.checked;
-    let status = 'sandwich';
+    let status = 'nothing';
     if (row.classList.contains('table-secondary')) status = 'none';
     else if (soupChecked && mainChecked) status = 'full';
     else if (mainChecked) status = 'main';
@@ -3084,7 +3096,21 @@ function collectFridgeCalendar() {
 
   const childName = (document.getElementById('childName')?.value || document.getElementById('childNamePDF')?.value || '').trim();
   const childClass = (document.getElementById('childClass')?.value || document.getElementById('childClassPDF')?.value || '').trim();
-  return { monthYear, childName, childClass, weeks, counts };
+  return { monthYear, childName, childClass, weeks, counts, withNames: false };
+}
+
+// Dania zamówione danego dnia: [['soup', nazwa], ['main', nazwa]]
+function getFridgeDayDishes(day) {
+  const dishes = [];
+  if (day.status === 'full' || day.status === 'soup') dishes.push(['soup', day.soup]);
+  if (day.status === 'full' || day.status === 'main') dishes.push(['main', day.main]);
+  return dishes;
+}
+
+// "PAŹDZIERNIK 2026" -> "Październik 2026"
+function formatFridgeMonthTitle(monthYear) {
+  const [month, year] = monthYear.split(' ');
+  return month.charAt(0) + month.slice(1).toLowerCase() + ' ' + year;
 }
 
 function getFridgeCalendarSubtitle(cal) {
@@ -3119,12 +3145,9 @@ function downloadBlob(blob, fileName) {
 
 function buildFridgeCalendarText(cal) {
   const indent = ' '.repeat(13);
-  const lines = [`KALENDARZ OBIADÓW: ${cal.monthYear}`];
+  const lines = [`KALENDARZ OBIADÓW: ${formatFridgeMonthTitle(cal.monthYear)}`];
   const subtitle = getFridgeCalendarSubtitle(cal);
   if (subtitle) lines.push(subtitle);
-
-  lines.push('', 'Legenda:');
-  Object.values(FRIDGE_STATUSES).forEach(s => lines.push(`  ${s.label.padEnd(15)}${s.legend}`));
 
   cal.weeks.forEach((week, index) => {
     const days = week.filter(Boolean);
@@ -3132,84 +3155,110 @@ function buildFridgeCalendarText(cal) {
     days.forEach(day => {
       const weekday = getDayOfWeekPL(day.date.getDay(), true).padEnd(3);
       lines.push(`  ${weekday} ${day.dateKey}  ${FRIDGE_STATUSES[day.status].label}`);
-      if (day.soup) lines.push(`${indent}zupa: ${day.soup}`);
-      if (day.main) lines.push(`${indent}drugie danie: ${day.main}`);
+      if (cal.withNames) {
+        getFridgeDayDishes(day).forEach(([key, name]) => {
+          if (name) lines.push(`${indent}${FRIDGE_DISHES[key].label.toLowerCase()}: ${name}`);
+        });
+      }
     });
   });
 
   lines.push('', 'PODSUMOWANIE');
   Object.entries(FRIDGE_STATUSES).forEach(([key, s]) => {
-    if (cal.counts[key]) lines.push(`  ${s.label.padEnd(15)}${formatDaysCount(cal.counts[key])}`);
+    if (cal.counts[key]) lines.push(`  ${s.label.padEnd(25)}${formatDaysCount(cal.counts[key])}`);
   });
 
   return lines.join('\r\n') + '\r\n';
 }
 
 // DOCX to archiwum ZIP z kilkoma plikami XML. Składamy je ręcznie,
-// żeby nie dociągać kolejnej biblioteki z CDN.
+// żeby nie dociągać kolejnej biblioteki z CDN. Dni to kolorowe kafelki:
+// komórki tabeli z odstępem między nimi (tblCellSpacing).
 function buildFridgeCalendarDocx(cal) {
   const W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
   const REL_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
   const OFFICE_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
   const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
-  const COL_W = 3140; // 5 kolumn na szerokość A4 w poziomie, w twipach
+  const COL_W = 3100; // 5 kolumn na szerokość A4 w poziomie, w twipach
+  const INK = '17211B';
+  const MUTED = '6B7A72';
 
   const esc = text => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const run = (text, { bold = false, size = 20, color = '', fill = '' } = {}) =>
-    `<w:r><w:rPr>${bold ? '<w:b/>' : ''}${color ? `<w:color w:val="${color}"/>` : ''}<w:sz w:val="${size}"/>` +
-    `${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}</w:rPr>` +
-    `<w:t xml:space="preserve">${esc(text)}</w:t></w:r>`;
+  const run = (text, { bold = false, italic = false, caps = false, size = 20, color = INK, spacing = 0, fill = '' } = {}) =>
+    '<w:r><w:rPr>' +
+    (bold ? '<w:b/>' : '') + (italic ? '<w:i/>' : '') + (caps ? '<w:caps/>' : '') +
+    `<w:color w:val="${color}"/>` + (spacing ? `<w:spacing w:val="${spacing}"/>` : '') +
+    `<w:sz w:val="${size}"/>` +
+    (fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : '') +
+    `</w:rPr><w:t xml:space="preserve">${esc(text)}</w:t></w:r>`;
   const para = (runs, { align = '', before = 0, after = 0 } = {}) =>
     `<w:p><w:pPr><w:spacing w:before="${before}" w:after="${after}"/>${align ? `<w:jc w:val="${align}"/>` : ''}</w:pPr>${runs}</w:p>`;
-  const cell = (content, fill = '') =>
+  const dashed = ['top', 'left', 'bottom', 'right']
+    .map(side => `<w:${side} w:val="dashed" w:sz="8" w:space="0" w:color="C2CCBF"/>`).join('');
+  const cell = (content, fill = '', borders = '') =>
     `<w:tc><w:tcPr><w:tcW w:w="${COL_W}" w:type="dxa"/>` +
-    `${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}</w:tcPr>${content || para('')}</w:tc>`;
+    (borders ? `<w:tcBorders>${borders}</w:tcBorders>` : '') +
+    (fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : '') +
+    `</w:tcPr>${content || para('')}</w:tc>`;
 
   const dayCell = day => {
     if (!day) return cell('');
     const s = FRIDGE_STATUSES[day.status];
-    let content = para(run(String(day.date.getDate()), { bold: true, size: 28 }));
-    if (day.soup || day.main) {
-      content += para(run(s.label, { bold: true, color: s.color }), { after: 60 });
-      if (day.soup) content += para(run('Zupa: ', { bold: true, size: 16 }) + run(day.soup, { size: 16 }));
-      if (day.main) content += para(run('Drugie: ', { bold: true, size: 16 }) + run(day.main, { size: 16 }));
-    } else {
-      // Kanapka albo brak obiadów: sam duży napis
-      const big = day.status === 'sandwich';
-      content += para(run(s.label, { bold: big, size: big ? 36 : 20, color: s.color }), { align: 'center', before: 120 });
+    const dishes = getFridgeDayDishes(day);
+    let content = para(run(String(day.date.getDate()), { bold: true, size: cal.withNames ? 30 : 34, color: dishes.length ? INK : '8A9790' }), { after: 40 });
+
+    if (!dishes.length) {
+      const nothing = day.status === 'nothing';
+      content += para(run(s.label, { bold: nothing, italic: !nothing, size: nothing ? 19 : 17, color: MUTED }));
+      return cell(content, nothing ? '' : s.fill, nothing ? dashed : '');
     }
+
+    dishes.forEach(([key, name]) => {
+      const dish = FRIDGE_DISHES[key];
+      if (cal.withNames) {
+        content += para(
+          run('● ', { size: 15, color: dish.color }) +
+          run(`${dish.label}: `, { bold: true, size: 15 }) +
+          run(name || '', { size: 15, color: '3D4A43' }), { after: 30 });
+      } else {
+        content += para(run('● ', { size: 20, color: dish.color }) + run(dish.label, { bold: true, size: 21 }), { after: 20 });
+      }
+    });
     return cell(content, s.fill);
   };
 
   const headerRow = '<w:tr><w:trPr><w:tblHeader/></w:trPr>' +
-    FRIDGE_WEEKDAYS.map(name => cell(para(run(name, { bold: true, size: 22, color: 'FFFFFF' }), { align: 'center' }), '343A40')).join('') +
+    FRIDGE_WEEKDAYS.map(name => cell(para(run(name, { bold: true, caps: true, size: 16, color: MUTED, spacing: 10 }), { align: 'center' }))).join('') +
     '</w:tr>';
   // Wysokość wiersza dobrana tak, żeby cały miesiąc zmieścił się na jednej stronie
-  const rowHeight = Math.min(2200, Math.floor(8200 / cal.weeks.length));
+  // (Word dolicza do tego odstępy i marginesy komórek)
+  const rowHeight = Math.min(1800, Math.floor(6900 / cal.weeks.length));
   const weekRows = cal.weeks.map(week =>
     `<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="${rowHeight}" w:hRule="atLeast"/></w:trPr>${week.map(dayCell).join('')}</w:tr>`
   ).join('');
 
-  const border = side => `<w:${side} w:val="single" w:sz="6" w:space="0" w:color="ADB5BD"/>`;
+  const noBorder = side => `<w:${side} w:val="nil"/>`;
   const table = '<w:tbl><w:tblPr>' +
     `<w:tblW w:w="${COL_W * 5}" w:type="dxa"/>` +
-    `<w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(border).join('')}</w:tblBorders>` +
+    '<w:tblCellSpacing w:w="45" w:type="dxa"/>' +
+    `<w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(noBorder).join('')}</w:tblBorders>` +
     '<w:tblLayout w:type="fixed"/>' +
-    '<w:tblCellMar><w:top w:w="60" w:type="dxa"/><w:left w:w="100" w:type="dxa"/>' +
-    '<w:bottom w:w="60" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar>' +
+    '<w:tblCellMar><w:top w:w="100" w:type="dxa"/><w:left w:w="140" w:type="dxa"/>' +
+    '<w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tblCellMar>' +
     `</w:tblPr><w:tblGrid>${`<w:gridCol w:w="${COL_W}"/>`.repeat(5)}</w:tblGrid>${headerRow}${weekRows}</w:tbl>`;
 
   const subtitle = getFridgeCalendarSubtitle(cal);
   const legend = para(Object.entries(FRIDGE_STATUSES)
     .filter(([key]) => cal.counts[key])
     .map(([key, s]) =>
-      run(` ${s.label} `, { bold: true, size: 18, color: s.color, fill: s.fill }) +
-      run(` ${s.legend}: ${formatDaysCount(cal.counts[key])}     `, { size: 18 }))
-    .join(''), { before: 120 });
+      run(` ${s.label} `, { bold: true, size: 17, color: s.accent, fill: key === 'nothing' ? 'F1F3F0' : s.fill }) +
+      run(` ${formatDaysCount(cal.counts[key])}      `, { size: 17, color: MUTED }))
+    .join(''), { before: 100 });
 
   const body =
-    para(run(`Kalendarz obiadów: ${cal.monthYear}`, { bold: true, size: 36 }), { after: subtitle ? 0 : 120 }) +
-    (subtitle ? para(run(subtitle, { size: 24 }), { after: 120 }) : '') +
+    para(run('Kalendarz obiadów', { bold: true, caps: true, size: 17, color: '1F9D63', spacing: 30 })) +
+    para(run(formatFridgeMonthTitle(cal.monthYear), { bold: true, size: 50 }), { after: subtitle ? 0 : 160 }) +
+    (subtitle ? para(run(subtitle, { size: 23, color: MUTED }), { after: 160 }) : '') +
     table + legend;
 
   const documentXml = `${XML_HEADER}<w:document ${W_NS}><w:body>${body}` +
@@ -3309,123 +3358,195 @@ function createZip(files) {
   return zip;
 }
 
+// Czcionka Plus Jakarta Sans (ta sama co na stronie) leży w folderze fonts/.
+// Gdyby się nie wczytała, PDF powstaje z czcionką Tinos z fonts.js.
+const CALENDAR_FONT_FILES = [
+  ['PlusJakartaSans-Regular.ttf', 'Jakarta', 'normal'],
+  ['PlusJakartaSans-SemiBold.ttf', 'Jakarta', 'bold'],
+  ['PlusJakartaSans-ExtraBold.ttf', 'JakartaHeavy', 'normal']
+];
+let calendarFontData = null;
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+async function registerCalendarFonts(doc) {
+  try {
+    if (!calendarFontData) {
+      calendarFontData = await Promise.all(CALENDAR_FONT_FILES.map(async ([file]) => {
+        const response = await fetch('fonts/' + file);
+        if (!response.ok) throw new Error('HTTP ' + response.status + ' dla ' + file);
+        return arrayBufferToBase64(await response.arrayBuffer());
+      }));
+    }
+    CALENDAR_FONT_FILES.forEach(([file, family, style], i) => {
+      doc.addFileToVFS(file, calendarFontData[i]);
+      doc.addFont(file, family, style);
+    });
+    return { regular: ['Jakarta', 'normal'], bold: ['Jakarta', 'bold'], heavy: ['JakartaHeavy', 'normal'] };
+  } catch (error) {
+    console.warn('Czcionka kalendarza niedostępna, używam Tinos:', error);
+    await loadScriptOnce(LAZY_SCRIPTS.fonts);
+    await registerTinosFonts(doc);
+    return { regular: ['Tinos', 'normal'], bold: ['Tinos', 'bold'], heavy: ['Tinos', 'bold'] };
+  }
+}
+
 async function buildFridgeCalendarPdf(cal) {
-  await loadPdfLibraries();
+  await loadScriptOnce(LAZY_SCRIPTS.jspdf);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
-  if (typeof registerTinosFonts === 'function') {
-    await registerTinosFonts(doc);
-  }
+  const font = await registerCalendarFonts(doc);
 
   const rgb = hex => [0, 2, 4].map(i => parseInt(hex.substr(i, 2), 16));
   const PAGE_W = 297;
   const PAGE_H = 210;
-  const M = 10;
-  const colW = (PAGE_W - 2 * M) / 5;
+  const M = 12;
+  const GAP = 2.5;
+  const colW = (PAGE_W - 2 * M - 4 * GAP) / 5;
 
   // Nagłówek: miesiąc po lewej, dziecko po prawej
-  doc.setTextColor(0, 0, 0);
-  doc.setFont('Tinos', 'bold');
-  doc.setFontSize(20);
-  doc.text(`Kalendarz obiadów: ${cal.monthYear}`, M, 16);
-  const subtitle = getFridgeCalendarSubtitle(cal);
-  if (subtitle) {
-    doc.setFont('Tinos', 'normal');
-    doc.setFontSize(13);
-    doc.text(subtitle, PAGE_W - M, 16, { align: 'right' });
+  doc.setFont(...font.bold);
+  doc.setFontSize(9);
+  doc.setTextColor(...rgb('1F9D63'));
+  doc.text('KALENDARZ OBIADÓW', M, 15, { charSpace: 0.5 });
+  doc.setFont(...font.heavy);
+  doc.setFontSize(26);
+  doc.setTextColor(...rgb('17211B'));
+  doc.text(formatFridgeMonthTitle(cal.monthYear), M, 26);
+  if (cal.childName) {
+    doc.setFont(...font.bold);
+    doc.setFontSize(14);
+    doc.text(cal.childName, PAGE_W - M, 19, { align: 'right' });
+  }
+  if (cal.childClass) {
+    doc.setFont(...font.regular);
+    doc.setFontSize(10.5);
+    doc.setTextColor(...rgb('6B7A72'));
+    doc.text(`klasa ${cal.childClass}`, PAGE_W - M, cal.childName ? 25.5 : 19, { align: 'right' });
   }
 
-  // Wiersz z nazwami dni tygodnia
-  const headerY = 21;
-  const headerH = 8;
-  doc.setFillColor(52, 58, 64);
-  doc.rect(M, headerY, PAGE_W - 2 * M, headerH, 'F');
-  doc.setFont('Tinos', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(255, 255, 255);
+  // Nazwy dni tygodnia
+  doc.setFont(...font.bold);
+  doc.setFontSize(8.5);
+  doc.setTextColor(...rgb('6B7A72'));
   FRIDGE_WEEKDAYS.forEach((name, i) => {
-    doc.text(name, M + colW * i + colW / 2, headerY + 5.6, { align: 'center' });
+    doc.text(name.toUpperCase(), M + (colW + GAP) * i + colW / 2, 35, { align: 'center' });
   });
 
-  // Siatka: jeden wiersz na tydzień
-  const gridY = headerY + headerH;
+  // Kafelki dni: jeden wiersz na tydzień
+  const gridTop = 38;
   const legendH = 12;
-  const rowH = Math.min(38, (PAGE_H - M - legendH - gridY) / cal.weeks.length);
-  doc.setDrawColor(173, 181, 189);
-  doc.setLineWidth(0.3);
+  const rows = cal.weeks.length;
+  const cellH = Math.min(36, (PAGE_H - M - legendH - gridTop - GAP * (rows - 1)) / rows);
   cal.weeks.forEach((week, w) => {
     week.forEach((day, d) => {
-      const x = M + colW * d;
-      const y = gridY + rowH * w;
-      if (!day) {
-        doc.rect(x, y, colW, rowH, 'S');
-        return;
-      }
-      doc.setFillColor(...rgb(FRIDGE_STATUSES[day.status].fill));
-      doc.rect(x, y, colW, rowH, 'FD');
-      drawFridgePdfDay(doc, day, x, y, colW, rowH, rgb);
+      if (day) drawFridgePdfDay(doc, font, rgb, day, M + (colW + GAP) * d, gridTop + (cellH + GAP) * w, colW, cellH, cal.withNames);
     });
   });
 
-  // Legenda z liczbą dni
-  const legendY = gridY + rowH * cal.weeks.length + 8;
+  // Legenda z liczbą dni (zawija się, gdyby nie zmieściła się w jednej linii)
   let legendX = M;
-  doc.setFontSize(11);
+  let legendY = gridTop + rows * (cellH + GAP) + 5;
+  doc.setFontSize(9.5);
   Object.entries(FRIDGE_STATUSES).forEach(([key, s]) => {
     if (!cal.counts[key]) return;
+    const label = `${s.label}: `;
+    const count = formatDaysCount(cal.counts[key]);
+    doc.setFont(...font.regular);
+    const labelW = doc.getTextWidth(label);
+    doc.setFont(...font.bold);
+    const itemW = 7 + labelW + doc.getTextWidth(count);
+    if (legendX + itemW > PAGE_W - M) {
+      legendX = M;
+      legendY += 6;
+    }
     doc.setFillColor(...rgb(s.fill));
-    doc.rect(legendX, legendY - 3.8, 5, 5, 'FD');
-    legendX += 7;
-    doc.setFont('Tinos', 'bold');
-    doc.setTextColor(...rgb(s.color));
-    doc.text(s.label, legendX, legendY);
-    legendX += doc.getTextWidth(s.label);
-    doc.setFont('Tinos', 'normal');
-    doc.setTextColor(0, 0, 0);
-    const count = `: ${formatDaysCount(cal.counts[key])}`;
-    doc.text(count, legendX, legendY);
-    legendX += doc.getTextWidth(count) + 9;
+    doc.setDrawColor(...rgb('C2CCBF'));
+    doc.setLineWidth(0.3);
+    if (key === 'nothing') doc.setLineDashPattern([0.8, 0.6], 0);
+    doc.roundedRect(legendX, legendY - 3.6, 4.6, 4.6, 1.2, 1.2, key === 'nothing' || key === 'none' ? 'FD' : 'F');
+    doc.setLineDashPattern([], 0);
+    doc.setFont(...font.regular);
+    doc.setTextColor(...rgb('17211B'));
+    doc.text(label, legendX + 7, legendY);
+    doc.setFont(...font.bold);
+    doc.text(count, legendX + 7 + labelW, legendY);
+    legendX += itemW + 8;
   });
 
   return doc;
 }
 
-function drawFridgePdfDay(doc, day, x, y, w, h, rgb) {
+function drawFridgePdfDay(doc, font, rgb, day, x, y, w, h, withNames) {
   const s = FRIDGE_STATUSES[day.status];
+  const dishes = getFridgeDayDishes(day);
 
-  doc.setTextColor(0, 0, 0);
-  doc.setFont('Tinos', 'bold');
-  doc.setFontSize(16);
-  doc.text(String(day.date.getDate()), x + 2.5, y + 7);
+  // Tło kafelka; "nic nie wybrano" ma białe tło z przerywaną ramką
+  doc.setFillColor(...rgb(s.fill));
+  if (day.status === 'nothing') {
+    doc.setDrawColor(...rgb('C2CCBF'));
+    doc.setLineWidth(0.35);
+    doc.setLineDashPattern([1.2, 1], 0);
+    doc.roundedRect(x, y, w, h, 3, 3, 'FD');
+    doc.setLineDashPattern([], 0);
+  } else {
+    doc.roundedRect(x, y, w, h, 3, 3, 'F');
+  }
 
-  doc.setTextColor(...rgb(s.color));
-  if (!day.soup && !day.main) {
-    // Kanapka albo brak obiadów: duży napis na środku komórki
-    const big = day.status === 'sandwich';
-    doc.setFont('Tinos', big ? 'bold' : 'normal');
-    doc.setFontSize(big ? 20 : 12);
-    doc.text(s.label, x + w / 2, y + h / 2 + 4, { align: 'center' });
+  doc.setFont(...font.heavy);
+  doc.setFontSize(17);
+  doc.setTextColor(...rgb(dishes.length ? '17211B' : '8A9790'));
+  doc.text(String(day.date.getDate()), x + 4, y + 8.5);
+
+  if (!dishes.length) {
+    const nothing = day.status === 'nothing';
+    doc.setFont(...(nothing ? font.bold : font.regular));
+    doc.setFontSize(nothing ? 11 : 9.5);
+    doc.setTextColor(...rgb('6B7A72'));
+    doc.splitTextToSize(s.label, w - 8).forEach((line, i) => doc.text(line, x + 4, y + 16 + i * 4.6));
     return;
   }
 
-  doc.setFontSize(10);
-  doc.text(s.label, x + w - 2.5, y + 6.5, { align: 'right' });
+  // Bez nazw: kolorowa kropka i rodzaj dania
+  if (!withNames) {
+    let rowY = y + 16;
+    dishes.forEach(([key]) => {
+      const dish = FRIDGE_DISHES[key];
+      doc.setFillColor(...rgb(dish.color));
+      doc.circle(x + 5.4, rowY - 1.3, 1.4, 'F');
+      doc.setFont(...font.bold);
+      doc.setFontSize(11);
+      doc.setTextColor(...rgb('17211B'));
+      doc.text(dish.label, x + 8.6, rowY);
+      rowY += 6.2;
+    });
+    return;
+  }
 
-  // Nazwy dań: zmniejszamy czcionkę, aż tekst zmieści się w komórce
-  const dishes = [];
-  if (day.soup) dishes.push(['Zupa: ', day.soup]);
-  if (day.main) dishes.push(['Drugie: ', day.main]);
-  const availableH = h - 12;
-  doc.setFont('Tinos', 'normal');
-  let fontSize = 10.5;
+  // Z nazwami: zmniejszamy czcionkę, aż tekst zmieści się w kafelku
+  const textX = x + 8.6;
+  const textW = w - 8.6 - 3;
+  const availableH = h - 13;
+  doc.setFont(...font.regular);
+  let fontSize = 9.5;
   let lineH;
   let lines;
   do {
     fontSize -= 0.5;
     doc.setFontSize(fontSize);
-    lineH = fontSize * 0.3528 * 1.2;
-    lines = dishes.flatMap(([prefix, name]) =>
-      doc.splitTextToSize(prefix + name, w - 6).map((text, i) => ({ text, prefix: i === 0 ? prefix : '' })));
+    lineH = fontSize * 0.3528 * 1.22;
+    lines = dishes.flatMap(([key, name]) => {
+      const prefix = FRIDGE_DISHES[key].label + ': ';
+      return doc.splitTextToSize(prefix + (name || ''), textW)
+        .map((text, i) => ({ text, key, prefix: i === 0 ? prefix : '' }));
+    });
   } while (lines.length * lineH > availableH && fontSize > 6.5);
 
   const maxLines = Math.floor(availableH / lineH);
@@ -3435,19 +3556,22 @@ function drawFridgePdfDay(doc, day, x, y, w, h, rgb) {
     last.text = last.text.replace(/\s*\S*$/, '') + '...';
   }
 
-  doc.setTextColor(33, 37, 41);
   lines.forEach((line, i) => {
-    const lineY = y + 10 + lineH * (i + 0.85);
+    const lineY = y + 12.5 + lineH * (i + 0.8);
     let text = line.text;
-    let textX = x + 2.5;
+    let lineX = textX;
     if (line.prefix && text.startsWith(line.prefix)) {
-      doc.setFont('Tinos', 'bold');
-      doc.text(line.prefix, textX, lineY);
-      textX += doc.getTextWidth(line.prefix);
+      doc.setFillColor(...rgb(FRIDGE_DISHES[line.key].color));
+      doc.circle(x + 5.4, lineY - fontSize * 0.12, 1.2, 'F');
+      doc.setFont(...font.bold);
+      doc.setTextColor(...rgb('17211B'));
+      doc.text(line.prefix, lineX, lineY);
+      lineX += doc.getTextWidth(line.prefix);
       text = text.slice(line.prefix.length);
     }
-    doc.setFont('Tinos', 'normal');
-    doc.text(text, textX, lineY);
+    doc.setFont(...font.regular);
+    doc.setTextColor(...rgb('3D4A43'));
+    doc.text(text, lineX, lineY);
   });
 }
 

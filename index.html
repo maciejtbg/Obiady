@@ -356,9 +356,13 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
             <span class="panel-icon"><svg class="icon"><use href="#i-calendar"/></svg></span>
             <div>
               <h2 class="panel-title">Kalendarz na lodówkę</h2>
-              <p class="panel-sub">Od razu widać, w które dni dziecko potrzebuje kanapki</p>
+              <p class="panel-sub">Cały miesiąc na jednej kartce: w które dni jest zupa, a w które drugie danie</p>
             </div>
           </header>
+          <div class="seg" role="radiogroup" aria-label="Co pokazać w kalendarzu">
+            <label class="seg-option"><input type="radio" name="fridgeDetail" value="simple" checked><span>Bez nazw dań</span></label>
+            <label class="seg-option"><input type="radio" name="fridgeDetail" value="names"><span>Z nazwami dań</span></label>
+          </div>
           <div class="format-grid">
             <button class="format-btn" onclick="downloadFridgeCalendar('pdf')"><span class="format-tag tag-pdf">PDF</span>Do druku</button>
             <button class="format-btn" onclick="downloadFridgeCalendar('docx')"><span class="format-tag tag-docx">DOCX</span>Word</button>

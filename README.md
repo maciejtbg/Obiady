@@ -16,7 +16,7 @@ Narzędzie webowe do wczytywania jadłospisu szkolnej stołówki (plik `.doc`/`.
 - Rezerwowa konwersja przez Cloudmersive dla starszych/nietypowych plików
 - Historia wczytanych jadłospisów (zapis do MySQL)
 - Wybór konkretnych obiadów i generowanie tabeli do deklaracji
-- Kalendarz na lodówkę (TXT, DOCX, PDF): cały miesiąc z zamówionymi daniami i zaznaczonymi dniami, w które dziecko potrzebuje kanapki
+- Kalendarz na lodówkę (TXT, DOCX, PDF): cały miesiąc z informacją, w które dni jest zamówiona zupa i/lub drugie danie, z nazwami dań albo bez
 - Tryb ciemny/jasny, statystyki odwiedzin
 
 ## Stack
