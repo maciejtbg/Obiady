@@ -795,6 +795,8 @@ function parseMenuFromTableData(dane, ctx) {
 }
 
 function parseMenu(jsonTekst) {
+  // Zapamiętany do listy "Moje deklaracje" (ponowne otwarcie miesiąca)
+  currentMenuSource = typeof jsonTekst === 'string' ? jsonTekst : JSON.stringify(jsonTekst);
   try {
     const toggleDebugElem = document.getElementById('toggleDebug') || window.toggleDebugCheckbox;
     const debugEnabled = !!(toggleDebugElem && toggleDebugElem.checked);
@@ -1564,6 +1566,7 @@ function generateDeclaration() {
   html += '</tbody></table>';
   document.getElementById('declarationTableContainer').innerHTML = html;
   document.getElementById('declarationActions').classList.remove('d-none');
+  saveDeclarationSnapshot();
 }
 
 // ============================================
@@ -1722,6 +1725,7 @@ function cleanupAndShowSuccess(copyContainer, selection, showNotification = true
   
   if (showNotification) {
     showSimpleToast('✅ Tabela skopiowana! Wklej w emailu (Ctrl+V)', 'success');
+    recordDeclarationSend('kopia');
   }
 }
 
@@ -1921,6 +1925,7 @@ function sendViaGmail() {
   const subject = `Deklaracja obiadowa - ${childName} - ${monthYear}`;
   const htmlContent = generateEmailHTML();
   showEmailPreviewPanel(htmlContent, emailTo, subject, 'gmail');
+  recordDeclarationSend('gmail', emailTo);
 }
 
 function sendViaOutlook() {
@@ -1929,6 +1934,7 @@ function sendViaOutlook() {
   const subject = `Deklaracja obiadowa - ${childName} - ${getMonthYear()}`;
   const htmlContent = generateEmailHTML();
   showEmailPreviewPanel(htmlContent, emailTo, subject, 'outlook');
+  recordDeclarationSend('outlook', emailTo);
 }
 
 function sendViaLocalClient() {
@@ -1937,6 +1943,7 @@ function sendViaLocalClient() {
   const subject = `Deklaracja obiadowa - ${childName} - ${getMonthYear()}`;
   const htmlContent = generateEmailHTML();
   showEmailPreviewPanel(htmlContent, emailTo, subject, 'local');
+  recordDeclarationSend('local', emailTo);
 }
 
 // STARA funkcja zachowana dla kompatybilności (używana np. przez copyDeclarationTable)
@@ -2010,10 +2017,13 @@ function getMonthYear() {
   return `${monthNames[month]} ${targetYear}`;
 }
 
+// Rok szkolny miesiąca z deklaracji (wrzesień 2026 to 2026/2027, nawet gdy deklaracja
+// powstaje w sierpniu); bez jadłospisu w tabeli liczony od dzisiejszej daty
 function getSchoolYear() {
+  const period = getMenuPeriod();
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+  const year = period ? period.year : now.getFullYear();
+  const month = period ? period.month : now.getMonth() + 1;
   if (month >= 9) {
     return `${year}/${year + 1}`;
   } else {
@@ -2167,6 +2177,7 @@ async function generatePDFWithoutSignature() {
     );
     
     showSimpleToast('✅ PDF wygenerowany i pobrany!', 'success');
+    recordDeclarationSend('pdf');
     
   } catch (error) {
     console.error('Błąd generowania PDF:', error);
@@ -2221,6 +2232,7 @@ async function generatePDFWithSignature() {
     );
     
     showSimpleToast('✅ PDF z podpisem wygenerowany i pobrany!', 'success');
+    recordDeclarationSend('pdf-podpis');
     
   } catch (error) {
     console.error('Błąd generowania PDF:', error);
@@ -3542,6 +3554,398 @@ function drawFridgePdfDay(doc, font, rgb, day, x, y, w, h, withNames) {
 }
 
 // ============================================
+// CZĘŚĆ 15: MOJE DEKLARACJE (ZAPIS TYLKO W PRZEGLĄDARCE)
+// ============================================
+// Każdy zdeklarowany miesiąc (osobno dla każdego dziecka) zapisujemy w
+// localStorage: wybrane obiady z nazwami dań, ceny, kwotę do zapłaty oraz
+// historię wysyłek z treścią wysłanej deklaracji. Nic nie trafia na serwer.
+
+const DECLARATIONS_KEY = 'meal_declarations_v1';
+const DECLARATION_MONTHS = ['', 'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+  'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
+const DECLARATION_SEND_LABELS = {
+  gmail: 'e-mail (Gmail)',
+  outlook: 'e-mail (Outlook)',
+  local: 'e-mail (program pocztowy)',
+  pdf: 'PDF',
+  'pdf-podpis': 'PDF z podpisem',
+  kopia: 'skopiowana tabela'
+};
+const DECLARATION_MAX_SENDS = 10;      // tyle wysyłek pamiętamy na miesiąc
+const DECLARATION_HTML_SENDS = 3;      // treść deklaracji tylko dla ostatnich wysyłek
+const openDeclarationKeys = new Set(); // rozwinięte pozycje zostają rozwinięte po odświeżeniu listy
+
+// Jadłospis, z którego powstała tabela (do ponownego otwarcia miesiąca z listy)
+let currentMenuSource = null;
+
+function loadDeclarations() {
+  try {
+    const data = JSON.parse(localStorage.getItem(DECLARATIONS_KEY) || '{}');
+    return data && typeof data === 'object' && data.entries ? data.entries : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function storeDeclarations(entries) {
+  const write = () => localStorage.setItem(DECLARATIONS_KEY, JSON.stringify({ entries }));
+  try {
+    write();
+  } catch (e) {
+    // Brak miejsca: usuwamy treść najstarszych wysyłek, dane i kwoty zostają
+    Object.values(entries).forEach(entry => entry.sends.slice(0, -1).forEach(send => { delete send.html; }));
+    try {
+      write();
+    } catch (e2) {
+      console.warn('Nie udało się zapisać deklaracji w przeglądarce:', e2);
+    }
+  }
+}
+
+function formatMoney(value) {
+  return Number(value || 0).toFixed(2).replace('.', ',') + ' zł';
+}
+
+function formatDateTime(iso, withTime) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  const date = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+  return withTime ? `${date}, ${pad(d.getHours())}:${pad(d.getMinutes())}` : date;
+}
+
+// Miesiąc i rok jadłospisu w tabeli (ta sama zasada co w getMonthYear)
+function getMenuPeriod() {
+  const label = getMonthYear();
+  const firstDate = document.querySelector('#menuTable tbody tr')?.cells[1]?.textContent || '';
+  const month = parseInt(firstDate.split('.')[1], 10);
+  const year = parseInt(label.split(' ')[1], 10);
+  return month && year ? { month, year } : null;
+}
+
+function getDeclarationChild() {
+  const value = (id, fallbackId) => (document.getElementById(id)?.value || document.getElementById(fallbackId)?.value || '').trim();
+  return {
+    name: value('childName', 'childNamePDF'),
+    cls: value('childClass', 'childClassPDF'),
+    health: value('healthNotes', 'healthNotesPDF') || 'brak'
+  };
+}
+
+function getDeclarationKey(period, childName) {
+  return `${period.year}-${String(period.month).padStart(2, '0')}|${childName.toLowerCase().replace(/\s+/g, ' ')}`;
+}
+
+// Stan tabeli i podsumowania w tej chwili: dni, wybory, ceny i kwota (jak w updateSummary)
+function buildDeclarationSnapshot() {
+  const period = getMenuPeriod();
+  const rows = [...document.querySelectorAll('#menuTable tbody tr')];
+  if (!period || !rows.length) return null;
+
+  const counts = { combo: 0, first: 0, second: 0 };
+  const days = [];
+  rows.forEach(row => {
+    if (row.classList.contains('weekend-row')) return;
+    const date = row.cells[1]?.textContent.trim();
+    if (!date) return;
+    const boxes = row.querySelectorAll('input[type="checkbox"]');
+    const noLunch = row.classList.contains('table-secondary') || boxes.length < 2;
+    const first = !noLunch && boxes[0].checked;
+    const second = !noLunch && boxes[1].checked;
+    if (first && second) counts.combo++;
+    else if (first) counts.first++;
+    else if (second) counts.second++;
+    days.push({
+      date,
+      soup: noLunch ? '' : row.cells[3].textContent.trim(),
+      main: noLunch ? '' : row.cells[5].textContent.trim(),
+      first,
+      second,
+      noLunch
+    });
+  });
+
+  const priceFirst = parseFloat(document.getElementById('firstCoursePrice')?.value) || 0;
+  const priceSecond = parseFloat(document.getElementById('secondCoursePrice')?.value) || 0;
+  const comboInput = document.getElementById('comboPrice');
+  const priceCombo = comboInput && comboInput.value !== '' ? (parseFloat(comboInput.value) || 0) : priceFirst + priceSecond;
+  const total = Math.round((counts.first * priceFirst + counts.second * priceSecond + counts.combo * priceCombo) * 100) / 100;
+
+  return {
+    period,
+    monthYear: getMonthYear(),
+    child: getDeclarationChild(),
+    prices: { first: priceFirst, second: priceSecond, combo: priceCombo },
+    counts,
+    total,
+    days
+  };
+}
+
+// Zapisuje bieżący stan miesiąca; z $send dopisuje też wysyłkę (co i jak wysłano)
+function saveDeclarationSnapshot(send) {
+  const snapshot = buildDeclarationSnapshot();
+  if (!snapshot) return;
+  const entries = loadDeclarations();
+  const key = getDeclarationKey(snapshot.period, snapshot.child.name);
+  const now = new Date().toISOString();
+  const entry = entries[key] || { createdAt: now, sends: [], paidAt: null };
+
+  Object.assign(entry, {
+    month: snapshot.period.month,
+    year: snapshot.period.year,
+    monthYear: snapshot.monthYear,
+    child: snapshot.child,
+    prices: snapshot.prices,
+    counts: snapshot.counts,
+    total: snapshot.total,
+    days: snapshot.days,
+    menu: currentMenuSource || entry.menu || null,
+    updatedAt: now
+  });
+
+  if (send) {
+    entry.sends.push({
+      at: now,
+      method: send.method,
+      to: send.to || null,
+      total: snapshot.total,
+      counts: snapshot.counts,
+      days: snapshot.days,
+      html: send.html || null
+    });
+    entry.sends = entry.sends.slice(-DECLARATION_MAX_SENDS);
+    entry.sends.slice(0, -DECLARATION_HTML_SENDS).forEach(old => { delete old.html; });
+  }
+
+  // Deklaracja zrobiona przed wpisaniem imienia dziecka i niewysłana: zastępujemy ją
+  if (snapshot.child.name) {
+    const unnamedKey = getDeclarationKey(snapshot.period, '');
+    if (entries[unnamedKey] && !entries[unnamedKey].sends.length) delete entries[unnamedKey];
+  }
+
+  entries[key] = entry;
+  storeDeclarations(entries);
+  renderDeclarationArchive();
+}
+
+// Wysyłka zapamiętana razem z treścią deklaracji (jak w e-mailu)
+function recordDeclarationSend(method, to) {
+  const child = getDeclarationChild();
+  const firstPrice = document.getElementById('firstCoursePrice')?.value || '';
+  const secondPrice = document.getElementById('secondCoursePrice')?.value || '';
+  const tableHTML = document.querySelector('#declarationTableContainer table')?.outerHTML || '';
+  const html = tableHTML
+    ? generateFullHTMLEmail(child.name, child.cls, getMonthYear(), firstPrice, secondPrice,
+        getComboPriceValue(firstPrice, secondPrice), child.health, tableHTML)
+    : null;
+  saveDeclarationSnapshot({ method, to, html });
+}
+
+function describeDeclarationChoice(day) {
+  if (day.noLunch) return 'Dzień bez obiadu';
+  if (day.first && day.second) return 'Zupa i drugie danie';
+  if (day.first) return 'Tylko zupa';
+  if (day.second) return 'Tylko drugie danie';
+  return 'Nic nie wybrano';
+}
+
+function declarationStatus(entry) {
+  const last = entry.sends[entry.sends.length - 1];
+  if (!last) return { text: 'Niewysłana', cls: 'is-draft' };
+  const date = formatDateTime(last.at).slice(0, 5);
+  if (last.method === 'pdf' || last.method === 'pdf-podpis') return { text: `PDF pobrany ${date}`, cls: 'is-sent' };
+  if (last.method === 'kopia') return { text: `Tabela skopiowana ${date}`, cls: 'is-sent' };
+  return { text: `Wysłana ${date}`, cls: 'is-sent' };
+}
+
+function describeCounts(counts, prices) {
+  const parts = [];
+  if (counts.combo) parts.push(`${formatDaysCount(counts.combo)} zupa i drugie danie po ${formatMoney(prices.combo)}`);
+  if (counts.first) parts.push(`${formatDaysCount(counts.first)} tylko zupa po ${formatMoney(prices.first)}`);
+  if (counts.second) parts.push(`${formatDaysCount(counts.second)} tylko drugie danie po ${formatMoney(prices.second)}`);
+  return parts.length ? parts.join(', ') : 'Nie wybrano żadnego obiadu';
+}
+
+// Przyciski w liście obsługuje jeden nasłuch (klucz pozycji jest w data-key, bez wstawiania do kodu JS)
+function initDeclarationArchive() {
+  const list = document.getElementById('declarationArchiveList');
+  if (!list) return;
+  list.addEventListener('click', event => {
+    const button = event.target.closest('button[data-action]');
+    const key = button?.closest('details')?.dataset.key;
+    if (!key) return;
+    if (button.dataset.action === 'show') showArchivedDeclaration(key, Number(button.dataset.index));
+    if (button.dataset.action === 'open') openArchivedMonth(key);
+    if (button.dataset.action === 'delete') deleteArchivedDeclaration(key);
+  });
+  list.addEventListener('change', event => {
+    const key = event.target.closest('details')?.dataset.key;
+    if (key && event.target.dataset.action === 'paid') setDeclarationPaid(key, event.target.checked);
+  });
+  renderDeclarationArchive();
+}
+
+function renderDeclarationArchive() {
+  const section = document.getElementById('declarationArchive');
+  const list = document.getElementById('declarationArchiveList');
+  if (!section || !list) return;
+  const entries = loadDeclarations();
+  const keys = Object.keys(entries).sort((a, b) => {
+    const ea = entries[a];
+    const eb = entries[b];
+    return (eb.year * 100 + eb.month) - (ea.year * 100 + ea.month) || String(eb.updatedAt).localeCompare(String(ea.updatedAt));
+  });
+
+  section.classList.toggle('d-none', keys.length === 0);
+  document.querySelector('.app-grid')?.classList.toggle('has-archive', keys.length > 0);
+  list.innerHTML = keys.map(key => renderDeclarationEntry(key, entries[key])).join('');
+  list.querySelectorAll('details').forEach(details => {
+    details.addEventListener('toggle', () => {
+      if (details.open) openDeclarationKeys.add(details.dataset.key);
+      else openDeclarationKeys.delete(details.dataset.key);
+    });
+  });
+}
+
+function renderDeclarationEntry(key, entry) {
+  const lastSend = entry.sends[entry.sends.length - 1] || null;
+  // Pokazujemy to, co wysłano; bez wysyłki bieżący stan
+  const shown = lastSend || entry;
+  const status = declarationStatus(entry);
+  const childLine = [entry.child.name, entry.child.cls && `klasa ${entry.child.cls}`].filter(Boolean).join(', ');
+  const due = `10.${String(entry.month).padStart(2, '0')}.${entry.year}`;
+  const changedAfterSend = lastSend && JSON.stringify(lastSend.days) !== JSON.stringify(entry.days);
+
+  const sends = entry.sends.slice().reverse().map((send, i) => `
+    <li>
+      <span>${formatDateTime(send.at, true)} · ${escapeHtml(DECLARATION_SEND_LABELS[send.method] || send.method)}${send.to ? ` do ${escapeHtml(send.to)}` : ''} · ${formatMoney(send.total)}</span>
+      ${send.html ? `<button type="button" class="btn btn-soft btn-sm" data-action="show" data-index="${entry.sends.length - 1 - i}">Pokaż</button>` : ''}
+    </li>`).join('');
+
+  const days = shown.days.map(day => {
+    const names = [day.first && day.soup, day.second && day.main].filter(Boolean).map(escapeHtml).join(' · ');
+    const weekday = getDayOfWeekPL(new Date(entry.year, entry.month - 1, parseInt(day.date, 10)).getDay(), true);
+    const off = day.noLunch || (!day.first && !day.second);
+    return `
+      <li class="${off ? 'is-off' : ''}">
+        <span class="archive-day-date">${escapeHtml(day.date)} <small>${weekday}</small></span>
+        <span class="archive-day-choice">${describeDeclarationChoice(day)}${names ? `<small>${names}</small>` : ''}</span>
+      </li>`;
+  }).join('');
+
+  return `
+    <details class="archive-item" data-key="${escapeHtml(key)}" ${openDeclarationKeys.has(key) ? 'open' : ''}>
+      <summary>
+        <span class="archive-head">
+          <strong>${DECLARATION_MONTHS[entry.month]} ${entry.year}</strong>
+          ${childLine ? `<small>${escapeHtml(childLine)}</small>` : ''}
+        </span>
+        <span class="archive-total">${formatMoney(shown.total)}</span>
+        <span class="archive-status ${status.cls}">${status.text}</span>
+        ${entry.paidAt ? '<span class="archive-status is-paid">Zapłacona</span>' : ''}
+      </summary>
+      <div class="archive-body">
+        <div class="archive-pay">
+          <div>
+            <span class="archive-label">Do zapłaty</span>
+            <strong>${formatMoney(shown.total)}</strong>
+            <small>${entry.paidAt ? `zapłacono ${formatDateTime(entry.paidAt)}` : `wpłata do ${due} w sekretariacie`}</small>
+          </div>
+          <label class="archive-paid">
+            <input type="checkbox" class="form-check-input" data-action="paid" ${entry.paidAt ? 'checked' : ''}>
+            Zapłacone
+          </label>
+        </div>
+        <p class="archive-note">${describeCounts(shown.counts, entry.prices)}.</p>
+        ${changedAfterSend ? `<p class="archive-note archive-warn">Po ostatnim wysłaniu wybór obiadów zmienił się (teraz ${formatMoney(entry.total)}). Poniżej jest wersja wysłana.</p>` : ''}
+
+        <h4 class="archive-subtitle">${entry.sends.length ? 'Wysłano' : 'Jeszcze nie wysłano'}</h4>
+        ${sends ? `<ul class="archive-sends">${sends}</ul>` : '<p class="archive-note">Deklaracja jest przygotowana, ale nie została wysłana ani pobrana.</p>'}
+
+        <h4 class="archive-subtitle">Wybrane obiady</h4>
+        <ul class="archive-days">${days}</ul>
+
+        <div class="archive-actions">
+          ${entry.menu ? '<button type="button" class="btn btn-soft btn-sm" data-action="open">Otwórz ten miesiąc w tabeli</button>' : ''}
+          <button type="button" class="btn btn-link-muted btn-sm" data-action="delete">Usuń z tej przeglądarki</button>
+        </div>
+      </div>
+    </details>`;
+}
+
+function setDeclarationPaid(key, paid) {
+  const entries = loadDeclarations();
+  if (!entries[key]) return;
+  entries[key].paidAt = paid ? new Date().toISOString() : null;
+  storeDeclarations(entries);
+  renderDeclarationArchive();
+}
+
+function deleteArchivedDeclaration(key) {
+  const entries = loadDeclarations();
+  const entry = entries[key];
+  if (!entry) return;
+  const label = `${DECLARATION_MONTHS[entry.month].toLowerCase()} ${entry.year}${entry.child.name ? ` (${entry.child.name})` : ''}`;
+  if (!confirm(`Usunąć zapisaną deklarację na ${label} z tej przeglądarki?`)) return;
+  delete entries[key];
+  openDeclarationKeys.delete(key);
+  storeDeclarations(entries);
+  renderDeclarationArchive();
+}
+
+// Wczytuje zapisany jadłospis miesiąca z wyborami i cenami z deklaracji
+function openArchivedMonth(key) {
+  const entry = loadDeclarations()[key];
+  if (!entry || !entry.menu) return;
+  parseMenu(entry.menu);
+  const selections = {};
+  entry.days.forEach(day => {
+    if (!day.noLunch) selections[day.date] = { first: day.first, second: day.second };
+  });
+  applySelections(selections);
+  saveSelections();
+  [['firstCoursePrice', entry.prices.first], ['secondCoursePrice', entry.prices.second], ['comboPrice', entry.prices.combo]].forEach(([id, value]) => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.value = Number(value).toFixed(2);
+      input.dispatchEvent(new Event('input'));
+    }
+  });
+  document.querySelector('.area-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showSimpleToast(`Otwarto ${DECLARATION_MONTHS[entry.month].toLowerCase()} ${entry.year}`, 'success');
+}
+
+// Podgląd wysłanej deklaracji (tylko do odczytu, z możliwością skopiowania)
+function showArchivedDeclaration(key, index) {
+  const send = loadDeclarations()[key]?.sends[index];
+  if (!send || !send.html) return;
+  document.getElementById('archiveViewer')?.remove();
+  const viewer = document.createElement('div');
+  viewer.id = 'archiveViewer';
+  viewer.className = 'archive-viewer';
+  viewer.innerHTML = `
+    <div class="archive-viewer-box" role="dialog" aria-modal="true" aria-label="Wysłana deklaracja">
+      <div class="archive-viewer-head">
+        <strong>Deklaracja z ${formatDateTime(send.at, true)}</strong>
+        <div class="archive-viewer-buttons">
+          <button type="button" class="btn btn-soft btn-sm" data-action="copy">Kopiuj</button>
+          <button type="button" class="btn btn-primary btn-sm" data-action="close">Zamknij</button>
+        </div>
+      </div>
+      <iframe sandbox title="Treść deklaracji"></iframe>
+    </div>`;
+  viewer.querySelector('iframe').srcdoc = send.html;
+  viewer.addEventListener('click', event => {
+    const action = event.target.dataset.action;
+    if (action === 'close' || event.target === viewer) viewer.remove();
+    if (action === 'copy') {
+      copyRichHTMLToClipboard(send.html, ok => showSimpleToast(ok ? 'Deklaracja skopiowana' : 'Nie udało się skopiować', ok ? 'success' : 'error'));
+    }
+  });
+  document.body.appendChild(viewer);
+}
+
+// ============================================
 // INICJALIZACJA - Czeka na załadowanie DOM
 // ============================================
 
@@ -3550,6 +3954,7 @@ if (document.readyState === 'loading') {
     console.log('🚀 DOM załadowany - inicjalizacja...');
     loadHistory();
     loadSavedData(); // DODAJ TĘ LINIĘ
+    initDeclarationArchive();
     attachFormListeners(); // DODAJ TĘ LINIĘ
     console.log('✅ Aplikacja gotowa!');
   });
@@ -3557,6 +3962,7 @@ if (document.readyState === 'loading') {
   console.log('🚀 DOM już załadowany - inicjalizacja...');
   loadHistory();
   loadSavedData(); // DODAJ TĘ LINIĘ
+  initDeclarationArchive();
   attachFormListeners(); // DODAJ TĘ LINIĘ
   console.log('✅ Aplikacja gotowa!');
 }

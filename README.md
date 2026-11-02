@@ -27,6 +27,7 @@ Narzędzie webowe do wczytywania jadłospisu szkolnej stołówki (Word, PDF albo
 - Historia wczytanych jadłospisów (zapis do MySQL)
 - Wybór konkretnych obiadów i generowanie tabeli do deklaracji
 - Opisy dań w dymkach (AI albo Wikipedia), zapamiętywane w bazie
+- Moje deklaracje: każdy zdeklarowany miesiąc zapisuje się tylko w przeglądarce (localStorage, nic nie trafia na serwer), z wybranymi obiadami, kwotą do zapłaty, terminem wpłaty, historią wysyłek (e-mail, PDF, kopiowanie) i podglądem wysłanej deklaracji; miesiąc można ponownie otworzyć w tabeli i oznaczyć jako zapłacony
 - Kalendarz na lodówkę (TXT, DOCX, PDF): cały miesiąc z informacją, w które dni jest zamówiona zupa i/lub drugie danie, z nazwami dań albo bez
 - Tryb ciemny/jasny, statystyki odwiedzin
 
