@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css">
-  <link rel="stylesheet" href="styles.css?v=21ba3af8d7">
+  <link rel="stylesheet" href="styles.css?v=2418653e02">
 </head>
 
 <body>
@@ -251,7 +251,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
           <span class="panel-icon"><svg class="icon"><use href="#i-archive"/></svg></span>
           <div>
             <h2 class="panel-title">Moje deklaracje</h2>
-            <p class="panel-sub">Zapisane tylko w tej przeglądarce, nic nie trafia na serwer</p>
+            <p class="panel-sub">Zapisane tylko w tej przeglądarce, nic nie trafia na serwer. Kopię zapiszesz na dole strony.</p>
           </div>
         </header>
         <div id="declarationArchiveList" class="archive-list"></div>
@@ -265,7 +265,23 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
             <h2 class="panel-title">Wybierz obiady</h2>
             <p class="panel-sub">Zaznacz dania, które dziecko ma zjeść w szkole</p>
           </div>
+          <span id="menuMonthBadge" class="month-badge d-none"></span>
         </header>
+        <p id="menuHint" class="menu-hint d-none">
+          <span class="only-mobile">Stuknij danie, żeby je odznaczyć. Stuknij datę, żeby zobaczyć opis dań i alergeny.</span>
+          <span class="only-desktop">Odznacz dania, których dziecko nie zje. Najedź na danie albo kliknij datę, żeby zobaczyć opis.</span>
+        </p>
+        <!-- Dni tygodnia jednym kliknięciem (CZĘŚĆ 17 w script.js) -->
+        <div id="weekdayBar" class="weekday-bar d-none" role="group" aria-label="Obiady we wszystkie wybrane dni tygodnia">
+          <span class="weekday-bar-label">Cały dzień tygodnia:</span>
+          <div class="weekday-chips">
+            <button type="button" class="weekday-chip" data-wd="1" title="Zaznacz albo odznacz obiady we wszystkie poniedziałki">Pon</button>
+            <button type="button" class="weekday-chip" data-wd="2" title="Zaznacz albo odznacz obiady we wszystkie wtorki">Wt</button>
+            <button type="button" class="weekday-chip" data-wd="3" title="Zaznacz albo odznacz obiady we wszystkie środy">Śr</button>
+            <button type="button" class="weekday-chip" data-wd="4" title="Zaznacz albo odznacz obiady we wszystkie czwartki">Czw</button>
+            <button type="button" class="weekday-chip" data-wd="5" title="Zaznacz albo odznacz obiady we wszystkie piątki">Pt</button>
+          </div>
+        </div>
 
         <div class="menu-table-wrap">
           <table id="menuTable" class="menu-table">
@@ -392,7 +408,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
           <h2 class="panel-title">Jak to działa?</h2>
           <ol class="tips-list">
             <li>Otwórz jadłospis wczytany już przez innego rodzica albo wgraj plik (Word, PDF, zdjęcie). Dni i dania wczytają się same.</li>
-            <li>Odznacz dania, których dziecko nie będzie jeść. Koszt policzy się automatycznie.</li>
+            <li>Odznacz dania, których dziecko nie będzie jeść (cały dzień tygodnia, np. piątki, jednym przyciskiem). Koszt policzy się automatycznie.</li>
             <li>Wygeneruj deklarację i wyślij ją e-mailem albo zapisz jako PDF.</li>
           </ol>
         </section>
@@ -414,6 +430,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
         </button>
 
         <div id="declarationTableContainer" class="paper"></div>
+        <p id="declarationLiveNote" class="live-note d-none">Tabela zmienia się sama, gdy zmienisz zaznaczenia albo ceny.</p>
 
         <!-- KROK 4: Wybór formatu -->
         <div id="declarationActions" class="d-none">
@@ -520,6 +537,15 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
       </section>
 
     </div>
+    <!-- Kopia danych z tej przeglądarki (CZĘŚĆ 17 w script.js) -->
+    <footer class="app-footer">
+      <p>Zaznaczenia, dane dziecka i lista „Moje deklaracje” są zapisane tylko w tej przeglądarce. Zapisz kopię w pliku, żeby przenieść je na inny telefon albo komputer albo nie stracić ich po wyczyszczeniu przeglądarki.</p>
+      <div class="app-footer-actions">
+        <button type="button" class="btn btn-soft btn-sm" id="exportDataBtn"><svg class="icon"><use href="#i-download"/></svg>Zapisz kopię danych</button>
+        <label class="btn btn-soft btn-sm" for="importDataInput"><svg class="icon"><use href="#i-upload"/></svg>Wczytaj kopię</label>
+        <input type="file" id="importDataInput" class="visually-hidden" accept=".json,application/json">
+      </div>
+    </footer>
   </main>
 
   <!-- Dolny pasek na telefonie: koszt i szybkie przejście do deklaracji -->
@@ -535,7 +561,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
 
   <!-- jsPDF, html2canvas, fonts.js i Tippy ładują się dopiero wtedy,
        gdy są potrzebne (patrz loadScriptOnce w script.js) -->
-  <script src="script.js?v=28e31342d8" onerror="console.error('❌ BŁĄD: script.js nie załadował się!')"></script>
+  <script src="script.js?v=50940307b0" onerror="console.error('❌ BŁĄD: script.js nie załadował się!')"></script>
 </body>
 
 </html>

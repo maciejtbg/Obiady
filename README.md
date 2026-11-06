@@ -17,17 +17,19 @@ Narzędzie webowe do wczytywania jadłospisu szkolnej stołówki (Word, PDF albo
    - dni wolne („DZIEŃ WOLNY”, „święto”).
 5. Wynik jest sprawdzany: niezgodność nazwy dnia z datą, powtórzone dni, brakujące dni robocze, dni bez dań. Uwagi pokazują się użytkownikowi pod polem wyboru pliku.
 6. Wynik dla tego samego pliku jest zapamiętywany w `cache/` (oszczędza limity darmowych usług) i zapisywany w historii w bazie danych (jeśli skonfigurowana jest baza — `db_config.php`).
-7. Po najechaniu kursorem na danie pokazuje się jego opis (`dish_info.php`, `dish_descriptions.php`). Opis każdego dania zapisuje się w tabeli `dish_descriptions`, więc zewnętrzną usługę pytamy o nie tylko raz. Źródła po kolei: baza, AI (darmowy plan Groq, `ai_config.php`), słownik (`dish_seed.php`), Wikipedia. Gdy AI jest skonfigurowane, opisy ze słownika i z Wikipedii zostają zastąpione opisami AI.
-8. Użytkownik wybiera interesujące go obiady i generuje gotową tabelę do deklaracji.
+7. Po najechaniu kursorem na danie (albo po stuknięciu daty na telefonie) pokazuje się jego opis (`dish_info.php`, `dish_descriptions.php`). Opis każdego dania zapisuje się w tabeli `dish_descriptions`, więc zewnętrzną usługę pytamy o nie tylko raz. Źródła po kolei: baza, AI (darmowy plan Groq, `ai_config.php`), słownik (`dish_seed.php`), Wikipedia. Gdy AI jest skonfigurowane, opisy ze słownika i z Wikipedii zostają zastąpione opisami AI.
+8. Użytkownik wybiera interesujące go obiady i generuje gotową tabelę do deklaracji. Po wygenerowaniu tabela zmienia się razem z zaznaczeniami i cenami, a po otwarciu innego miesiąca znika, żeby nie wysłać starej.
 
 ## Funkcje
 
 - Wczytywanie jadłospisu z Worda (DOC, DOCX), PDF, skanu albo zdjęcia
 - Odporność na zmiany układu, nazewnictwa i literówki w jadłospisie
-- Historia wczytanych jadłospisów (zapis do MySQL)
+- Wspólna lista jadłospisów wczytanych przez rodziców (zapis do MySQL); przy wejściu na stronę najnowszy otwiera się sam, a ponowne wgranie tego samego pliku proponuje otwarcie zapisanego wyniku
+- Cały dzień tygodnia (np. wszystkie piątki) zaznaczany albo odznaczany jednym przyciskiem
 - Wybór konkretnych obiadów i generowanie tabeli do deklaracji
-- Opisy dań w dymkach (AI albo Wikipedia), zapamiętywane w bazie
+- Opisy dań (AI albo Wikipedia), zapamiętywane w bazie: na komputerze w dymkach, a po kliknięciu daty w oknie dnia z deserem, alergenami i możliwością odznaczenia dania (także na telefonie)
 - Moje deklaracje: każdy zdeklarowany miesiąc zapisuje się tylko w przeglądarce (localStorage, nic nie trafia na serwer), z wybranymi obiadami, kwotą do zapłaty, terminem wpłaty, historią wysyłek (e-mail, PDF, kopiowanie) i podglądem wysłanej deklaracji; miesiąc można ponownie otworzyć w tabeli i oznaczyć jako zapłacony
+- Kopia danych z przeglądarki do pliku JSON (zaznaczenia, dane dziecka, Moje deklaracje) i wczytanie jej na innym urządzeniu; wczytanie tylko dopisuje brakujące dane
 - Kalendarz na lodówkę (TXT, DOCX, PDF): cały miesiąc z informacją, w które dni jest zamówiona zupa i/lub drugie danie, z nazwami dań albo bez
 - Tryb ciemny/jasny, statystyki odwiedzin
 

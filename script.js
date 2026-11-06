@@ -306,6 +306,7 @@ toggleDebugCheckbox.addEventListener('change', function () {
 // ============================================
 
 let allHistoryLoaded = false;
+let autoOpenPending = true; // przy wejściu na stronę otwieramy najnowszy jadłospis z listy
 
 function loadHistory() {
   fetch('get_history.php?limit=1')
@@ -320,7 +321,9 @@ function loadHistory() {
         historyData = data.history;
         allHistoryLoaded = false;
         renderHistory();
+        autoOpenNewestMenu();
       } else {
+        autoOpenPending = false;
         historySection.classList.add('d-none');
         if (toggleDebugCheckbox.checked && data.error) {
           debugBox.innerHTML = '⚠️ Historia: ' + data.error;
@@ -329,6 +332,7 @@ function loadHistory() {
       }
     })
     .catch(error => {
+      autoOpenPending = false;
       historySection.classList.add('d-none');
       if (toggleDebugCheckbox.checked) {
         console.warn('Historia niedostępna:', error);
@@ -396,11 +400,14 @@ function renderHistory() {
   historyList.innerHTML = historyData.map((item, index) => {
     const label = historyMenuLabel(item);
     const filename = escapeHtml(item.filename);
+    // Jadłospis, który jest teraz w tabeli (z listy albo właśnie wgrany)
+    const isOpen = currentMenuSource !== null && item.converted_text === currentMenuSource;
     return `
-      <button type="button" class="history-item${index === 0 ? ' is-latest' : ''}" onclick="loadFromHistory(${Number(item.id)})">
+      <button type="button" class="history-item${index === 0 ? ' is-latest' : ''}${isOpen ? ' is-open' : ''}" onclick="loadFromHistory(${Number(item.id)})">
         <span class="history-item-main">
           <strong>${label ? escapeHtml(label) : filename}</strong>
           ${index === 0 ? '<span class="history-badge">Najnowszy</span>' : ''}
+          ${isOpen ? '<span class="history-badge is-open-badge">Otwarty</span>' : ''}
         </span>
         <small>${label ? filename + ' · ' : ''}wczytany ${escapeHtml(item.upload_date)}</small>
       </button>
@@ -431,20 +438,42 @@ expandHistoryBtn.addEventListener('click', () => {
 
 window.loadFromHistory = function(id) {
   const item = historyData.find(h => h.id === id);
-  if (item) {
-    const textData = item.converted_text;
-    
-    if (toggleDebugCheckbox.checked) {
-      debugBox.innerHTML = `📂 Wczytano z historii: ${item.filename}<br>ID: ${item.id}`;
-      debugBox.classList.remove('d-none');
-    }
-    
-    convertedTextarea.value = textData;
-    parseMenu(textData);
-    // Na telefonie tabela jest niżej: przewijamy do niej od razu
-    document.querySelector('.area-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  if (item) openHistoryItem(item, true);
 };
+
+function openHistoryItem(item, scroll) {
+  if (toggleDebugCheckbox.checked) {
+    debugBox.innerHTML = `📂 Wczytano z historii: ${escapeHtml(item.filename)}<br>ID: ${Number(item.id)}`;
+    debugBox.classList.remove('d-none');
+  }
+  convertedTextarea.value = item.converted_text;
+  parseMenu(item.converted_text);
+  // Na telefonie tabela jest niżej: po kliknięciu przewijamy do niej od razu
+  if (scroll) document.querySelector('.area-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Przy wejściu na stronę tabela od razu pokazuje najnowszy jadłospis (bez przewijania),
+// chyba że rodzic zdążył już coś otworzyć albo wybrał plik
+function autoOpenNewestMenu() {
+  if (!autoOpenPending) return;
+  autoOpenPending = false;
+  const busy = fileInput.files.length > 0 || !loadingSpinner.classList.contains('d-none');
+  if (busy || document.querySelector('#menuTable tbody tr') || !historyData[0]) return;
+  openHistoryItem(historyData[0], false);
+}
+
+// Pozycja listy po id; gdy nie ma jej wśród pokazanych, pobieramy dłuższą listę
+async function findHistoryItem(id) {
+  let item = historyData.find(h => h.id === id);
+  if (item) return item;
+  try {
+    const data = await (await fetch('get_history.php?limit=50')).json();
+    item = (data.history || []).find(h => h.id === id);
+  } catch (error) {
+    console.warn('Lista jadłospisów niedostępna:', error);
+  }
+  return item || null;
+}
 
 // ============================================
 // CZĘŚĆ 4: KONWERSJA PLIKÓW
@@ -534,96 +563,52 @@ function checkFileExists(filename) {
     });
 }
 
+// Ten sam plik jest już na wspólnej liście: proponujemy otwarcie zapisanego wyniku
+// (bez ponownego przetwarzania i zużywania limitów usług)
 function showDuplicateModal(fileData, onConfirm) {
-  const timeDiff = getTimeAgo(fileData.upload_date);
-  
-  const modalHtml = `
-    <div id="duplicateModal" style="
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    ">
-      <div style="
-        background: white;
-        padding: 30px;
-        border-radius: 10px;
-        max-width: 500px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      ">
-        <h4 style="margin-top: 0; color: #e67e22;">⚠️ Plik już istnieje</h4>
-        <p>Plik o nazwie <strong>"${fileData.filename}"</strong> został już załadowany.</p>
-        <p style="color: #666;">
-          <strong>Data uploadu:</strong> ${fileData.upload_date}<br>
-          <strong>Wgrany:</strong> ${timeDiff}
-        </p>
-        <p>Czy na pewno chcesz załadować ten plik ponownie?</p>
-        <div style="margin-top: 20px; text-align: right;">
-          <button onclick="closeDuplicateModal()" style="
-            padding: 10px 20px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            background: white;
-            border-radius: 5px;
-            cursor: pointer;
-          ">Anuluj</button>
-          <button onclick="confirmDuplicateUpload()" style="
-            padding: 10px 20px;
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-          ">Tak, wgraj ponownie</button>
-        </div>
-      </div>
-    </div>
-  `;
-  
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
-  window._duplicateUploadCallback = onConfirm;
+  const raw = String(fileData.upload_date || '');
+  const when = getTimeAgo(raw);
+  const date = raw.match(/^(\d{4})-(\d\d)-(\d\d)/);
+  const whenText = when === raw && date ? `${date[3]}.${date[2]}.${date[1]}` : when;
+  openAppDialog('duplicateModal', `
+    <h3 class="app-dialog-title">Ten jadłospis jest już na liście</h3>
+    <p>Plik <strong>${escapeHtml(fileData.filename)}</strong> był już wczytany (${escapeHtml(whenText)}). Możesz go otworzyć od razu, bez ponownego przetwarzania.</p>
+    <div class="app-dialog-actions">
+      <button type="button" class="btn btn-primary" data-action="open">Otwórz zapisany</button>
+      <button type="button" class="btn btn-soft" data-action="upload">Wgraj mimo to</button>
+      <button type="button" class="btn btn-link-muted" data-action="close">Anuluj</button>
+    </div>`, async action => {
+    if (action === 'upload') onConfirm();
+    if (action === 'open') {
+      const item = await findHistoryItem(Number(fileData.id));
+      if (item) openHistoryItem(item, true);
+      else onConfirm();
+    }
+  }, { label: 'Jadłospis jest już na liście' });
+}
+
+// Odmiana liczebników: 1 minuta, 2 minuty, 5 minut
+function polishPlural(count, one, few, many) {
+  if (count === 1) return one;
+  const last = count % 10;
+  const lastTwo = count % 100;
+  return last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? few : many;
 }
 
 function getTimeAgo(dateString) {
-  const uploadDate = new Date(dateString.replace(' ', 'T'));
-  const now = new Date();
-  const diffMs = now - uploadDate;
-  
+  const diffMs = Date.now() - new Date(dateString.replace(' ', 'T')).getTime();
+  if (!isFinite(diffMs)) return dateString;
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
-  
-  if (diffMins < 60) {
-    return diffMins === 1 ? '1 minutę temu' : `${diffMins} minut temu`;
-  } else if (diffHours < 24) {
-    return diffHours === 1 ? '1 godzinę temu' : `${diffHours} godzin temu`;
-  } else if (diffDays === 1) {
-    return '1 dzień temu';
-  } else if (diffDays < 30) {
-    return `${diffDays} dni temu`;
-  } else {
-    return dateString;
-  }
+
+  if (diffMins < 1) return 'przed chwilą';
+  if (diffMins < 60) return `${diffMins} ${polishPlural(diffMins, 'minutę', 'minuty', 'minut')} temu`;
+  if (diffHours < 24) return `${diffHours} ${polishPlural(diffHours, 'godzinę', 'godziny', 'godzin')} temu`;
+  if (diffDays === 1) return 'wczoraj';
+  if (diffDays < 30) return `${diffDays} dni temu`;
+  return dateString;
 }
-
-window.closeDuplicateModal = function() {
-  const modal = document.getElementById('duplicateModal');
-  if (modal) modal.remove();
-  window._duplicateUploadCallback = null;
-};
-
-window.confirmDuplicateUpload = function() {
-  if (window._duplicateUploadCallback) {
-    window._duplicateUploadCallback();
-  }
-  closeDuplicateModal();
-};
 
 function uploadAndConvert(file) {
   const formData = new FormData();
@@ -1001,6 +986,7 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
       // Klasy dla CSS: weekendy są ukryte, poniedziałek zaczyna nowy tydzień
       if (currentDate.getDay() === 0 || currentDate.getDay() === 6) row.classList.add('weekend-row');
       if (currentDate.getDay() === 1) row.classList.add('week-start');
+      row.dataset.wd = currentDate.getDay();
       row.insertCell().textContent = lp++;
       row.insertCell().textContent = dateKey;
       row.insertCell().textContent = dayOfWeek;
@@ -1015,6 +1001,10 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
       cellWyborDrugie.classList.add('cell-second-choice');
 
       if (parsedDates[dateKey]) {
+        // Kliknięcie daty pokazuje opis dań z tego dnia (na telefonie nie ma dymków)
+        row.classList.add('has-info');
+        [row.cells[1], row.cells[2]].forEach(cell => cell.addEventListener('click', () => openDayInfo(row)));
+
         cellPierwsze.textContent = parsedDates[dateKey].pierwszeDanie || '';
         cellPierwsze.classList.add('dish-name', 'cell-first-dish');
         
@@ -1093,12 +1083,14 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
 
 attachSummaryListeners();
     attachTooltipListeners();
-    attachSelectAllListeners(); // DODAJ TĘ LINIĘ
-// Inicjalizuj stan przycisków mobilnych
-  if (window.innerWidth <= 768) {
-    updateMobileButtonState('first');
-    updateMobileButtonState('second');
-  }
+    attachSelectAllListeners();
+    // Stan przycisków "Wszystkie zupy / drugie" na telefonie
+    if (window.innerWidth <= 768) {
+      updateMobileButtonState('first');
+      updateMobileButtonState('second');
+    }
+    afterMenuRendered();
+    if (historyData.length) renderHistory();
   } catch (error) {
     document.getElementById('warningBox')?.classList.remove('d-none');
     if ((document.getElementById('toggleDebug') && document.getElementById('toggleDebug').checked) && document.getElementById('debugBox')) {
@@ -1259,6 +1251,7 @@ function refreshDishTooltips() {
   document.querySelectorAll('.dish-name').forEach(el => {
     if (el._tippy) el._tippy.setContent(dishTooltipContent(el));
   });
+  refreshDayInfo();
 }
 
 // Pobiera opisy dań, których jeszcze nie znamy, po kilkanaście w jednym zapytaniu
@@ -1292,33 +1285,29 @@ async function fetchDishDescriptions(dishes) {
 }
 
 async function attachTooltipListeners() {
-  if (window.innerWidth <= 768) {
-    return;
-  }
-
-  try {
-    await loadTooltipLibraries();
-  } catch (error) {
-    console.warn('Dymki z opisami dań niedostępne:', error);
-    return;
-  }
-
-  const theme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
   const dishes = [];
   const seen = new Set();
   document.querySelectorAll('.dish-name').forEach(el => {
     const name = el.textContent.trim();
-    if (!name) return;
-    if (el._tippy) {
-      el._tippy.setContent(dishTooltipContent(el));
-    } else {
-      tippy(el, { content: dishTooltipContent(el), allowHTML: true, theme, placement: 'top' });
-    }
-    if (!seen.has(name)) {
-      seen.add(name);
-      dishes.push({ name, kind: el.classList.contains('cell-first-dish') ? 'zupa' : 'drugie' });
-    }
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    dishes.push({ name, kind: el.classList.contains('cell-first-dish') ? 'zupa' : 'drugie' });
   });
+
+  // Dymki tylko na komputerze; na telefonie opis pokazuje okno dnia (openDayInfo)
+  if (window.innerWidth > 768) {
+    try {
+      await loadTooltipLibraries();
+      const theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+      document.querySelectorAll('.dish-name').forEach(el => {
+        if (!el.textContent.trim()) return;
+        if (el._tippy) el._tippy.setContent(dishTooltipContent(el));
+        else tippy(el, { content: dishTooltipContent(el), allowHTML: true, theme, placement: 'top' });
+      });
+    } catch (error) {
+      console.warn('Dymki z opisami dań niedostępne:', error);
+    }
+  }
 
   await fetchDishDescriptions(dishes);
 }
@@ -1581,6 +1570,9 @@ function generateDeclaration() {
   document.getElementById('declarationTableContainer').innerHTML = html;
   document.getElementById('declarationActions').classList.remove('d-none');
   saveDeclarationSnapshot();
+  // Od teraz tabela zmienia się razem z zaznaczeniami (CZĘŚĆ 17)
+  declarationMonthShown = getMonthYear();
+  document.getElementById('declarationLiveNote')?.classList.remove('d-none');
 }
 
 // ============================================
@@ -1588,6 +1580,7 @@ function generateDeclaration() {
 // ============================================
 
 function copyDeclarationTable() {
+  flushDeclarationRefresh(); // tabela zgodna z ostatnimi zmianami
   const sourceTable = document.querySelector('#declarationTableContainer table');
   if (!sourceTable) {
     alert('Brak tabeli do skopiowania');
@@ -1933,6 +1926,7 @@ function copyRichFallback(htmlContent, callback) {
 }
 
 function sendViaGmail() {
+  flushDeclarationRefresh(); // tabela zgodna z ostatnimi zmianami
   const emailTo = document.getElementById('emailTo').value;
   const childName = document.getElementById('childName').value || 'Dziecko';
   const monthYear = getMonthYear();
@@ -1943,6 +1937,7 @@ function sendViaGmail() {
 }
 
 function sendViaOutlook() {
+  flushDeclarationRefresh(); // tabela zgodna z ostatnimi zmianami
   const emailTo = document.getElementById('emailTo').value;
   const childName = document.getElementById('childName').value || 'Dziecko';
   const subject = `Deklaracja obiadowa - ${childName} - ${getMonthYear()}`;
@@ -1952,6 +1947,7 @@ function sendViaOutlook() {
 }
 
 function sendViaLocalClient() {
+  flushDeclarationRefresh(); // tabela zgodna z ostatnimi zmianami
   const emailTo = document.getElementById('emailTo').value;
   const childName = document.getElementById('childName').value || 'Dziecko';
   const subject = `Deklaracja obiadowa - ${childName} - ${getMonthYear()}`;
@@ -2160,6 +2156,7 @@ function toggleSignatureSection() {
 }
 
 async function generatePDFWithoutSignature() {
+  flushDeclarationRefresh(); // tabela zgodna z ostatnimi zmianami
   const declarationTable = document.querySelector('#declarationTableContainer table');
   if (!declarationTable) {
     alert('❌ Najpierw wygeneruj tabelę deklaracji!');
@@ -2200,6 +2197,7 @@ async function generatePDFWithoutSignature() {
 }
 
 async function generatePDFWithSignature() {
+  flushDeclarationRefresh(); // tabela zgodna z ostatnimi zmianami
   if (!signatureCanvas || !signatureCtx) {
     alert('⚠️ Błąd: Canvas podpisu nie został zainicjalizowany!');
     return;
@@ -3960,6 +3958,365 @@ function showArchivedDeclaration(key, index) {
 }
 
 // ============================================
+// CZĘŚĆ 17: UDOGODNIENIA
+// ============================================
+// Deklaracja aktualna razem z zaznaczeniami, szybki wybór dni tygodnia,
+// opis dań z danego dnia (także na telefonie), wspólne okno dialogowe
+// i kopia danych z tej przeglądarki do pliku.
+
+let declarationMonthShown = null;   // miesiąc, dla którego wygenerowano tabelę deklaracji
+let declarationRefreshTimer = null;
+let dayInfoRow = null;              // wiersz dnia pokazany w oknie z opisem dań
+const WEEKDAY_PLURALS = { 1: 'poniedziałki', 2: 'wtorki', 3: 'środy', 4: 'czwartki', 5: 'piątki' };
+const WEEKDAY_FULL = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
+const BACKUP_APP_ID = 'obiady-deklaracja';
+
+// -------------------------------------------------------
+// Deklaracja zawsze zgodna z tym, co zaznaczono
+// -------------------------------------------------------
+// Po wygenerowaniu tabeli każda zmiana zaznaczeń albo cen odświeża ją
+// (z opóźnieniem, żeby "Wszystkie zupy" nie przeliczało tabeli 20 razy).
+// Przed wysłaniem, kopiowaniem i PDF czekające odświeżenie robimy od razu.
+
+function scheduleDeclarationRefresh() {
+  if (!declarationMonthShown) return;
+  clearTimeout(declarationRefreshTimer);
+  declarationRefreshTimer = setTimeout(refreshDeclarationNow, 250);
+}
+
+function refreshDeclarationNow() {
+  clearTimeout(declarationRefreshTimer);
+  declarationRefreshTimer = null;
+  if (declarationMonthShown && declarationMonthShown === getMonthYear()) generateDeclaration();
+}
+
+function flushDeclarationRefresh() {
+  if (declarationRefreshTimer) refreshDeclarationNow();
+}
+
+// Inny miesiąc w tabeli: deklaracja poprzedniego znika, żeby nie wysłać jej przez pomyłkę
+function resetDeclarationIfOtherMonth() {
+  if (!declarationMonthShown || declarationMonthShown === getMonthYear()) return;
+  clearTimeout(declarationRefreshTimer);
+  declarationRefreshTimer = null;
+  declarationMonthShown = null;
+  document.getElementById('declarationTableContainer').innerHTML = '';
+  ['declarationActions', 'emailFormSection', 'pdfFormSection', 'declarationLiveNote'].forEach(id => {
+    document.getElementById(id)?.classList.add('d-none');
+  });
+}
+
+// Wywoływane po zbudowaniu tabeli jadłospisu (renderMenuCalendar)
+function afterMenuRendered() {
+  resetDeclarationIfOtherMonth();
+  scheduleDeclarationRefresh();
+  const period = getMenuPeriod();
+  const badge = document.getElementById('menuMonthBadge');
+  if (badge && period) {
+    badge.textContent = `${DECLARATION_MONTHS[period.month]} ${period.year}`;
+    badge.classList.remove('d-none');
+  }
+  document.getElementById('menuHint')?.classList.remove('d-none');
+  closeAppDialog('dayInfo');
+  updateWeekdayChips();
+}
+
+// -------------------------------------------------------
+// Dni tygodnia jednym kliknięciem (np. w piątki bez obiadu)
+// -------------------------------------------------------
+
+// Pola wyboru dań z danego dnia tygodnia (tylko tam, gdzie danie jest w jadłospisie)
+function weekdayBoxes(weekday) {
+  const boxes = [];
+  document.querySelectorAll('#menuTable tbody tr.has-info').forEach(row => {
+    if (Number(row.dataset.wd) !== weekday) return;
+    row.querySelectorAll('.dish-checkbox').forEach(box => {
+      if (box.parentElement.previousElementSibling?.textContent.trim()) boxes.push(box);
+    });
+  });
+  return boxes;
+}
+
+function updateWeekdayChips() {
+  const bar = document.getElementById('weekdayBar');
+  if (!bar) return;
+  let anyDays = false;
+  bar.querySelectorAll('.weekday-chip').forEach(chip => {
+    const boxes = weekdayBoxes(Number(chip.dataset.wd));
+    const checked = boxes.filter(box => box.checked).length;
+    chip.disabled = boxes.length === 0;
+    chip.classList.toggle('is-all', boxes.length > 0 && checked === boxes.length);
+    chip.classList.toggle('is-none', boxes.length > 0 && checked === 0);
+    chip.classList.toggle('is-partial', checked > 0 && checked < boxes.length);
+    chip.setAttribute('aria-pressed', checked > 0 ? 'true' : 'false');
+    if (boxes.length) anyDays = true;
+  });
+  bar.classList.toggle('d-none', !anyDays);
+}
+
+// Gdy w te dni coś jest zaznaczone, odznaczamy wszystko; gdy nic, zaznaczamy wszystko
+function toggleWeekday(weekday) {
+  const boxes = weekdayBoxes(weekday);
+  if (!boxes.length) return;
+  const select = boxes.every(box => !box.checked);
+  boxes.forEach(box => {
+    if (box.checked === select) return;
+    box.checked = select;
+    box.dispatchEvent(new Event('change'));
+  });
+  updateWeekdayChips();
+  showSimpleToast(`${select ? 'Zaznaczono' : 'Odznaczono'} obiady we wszystkie ${WEEKDAY_PLURALS[weekday]}`, 'success');
+}
+
+// -------------------------------------------------------
+// Wspólne okno dialogowe
+// -------------------------------------------------------
+// Przyciski z data-action trafiają do onAction; "close", tło i Escape zamykają.
+// onAction zwraca true, gdy okno ma zostać otwarte (np. zmiana wyboru w oknie dnia).
+
+function openAppDialog(id, html, onAction, options = {}) {
+  let dialog = document.getElementById(id);
+  if (!dialog) {
+    dialog = document.createElement('div');
+    dialog.id = id;
+    dialog.className = 'app-dialog' + (options.sheet ? ' is-sheet' : '');
+    dialog.innerHTML = '<div class="app-dialog-box" role="dialog" aria-modal="true"></div>';
+    dialog.addEventListener('click', event => {
+      const button = event.target.closest('[data-action]');
+      if (event.target === dialog || button?.dataset.action === 'close') {
+        closeAppDialog(id);
+        return;
+      }
+      if (button && dialog._onAction) {
+        const keepOpen = dialog._onAction(button.dataset.action);
+        if (keepOpen !== true) closeAppDialog(id);
+      }
+    });
+    document.body.appendChild(dialog);
+  }
+  dialog._onAction = onAction;
+  dialog._onClose = options.onClose || null;
+  const box = dialog.querySelector('.app-dialog-box');
+  const hadFocus = dialog.contains(document.activeElement);
+  box.innerHTML = html;
+  box.setAttribute('aria-label', options.label || '');
+  if (!hadFocus) box.querySelector('button')?.focus({ preventScroll: true });
+  return dialog;
+}
+
+function closeAppDialog(id) {
+  const dialog = document.getElementById(id);
+  if (!dialog) return;
+  dialog.remove();
+  if (dialog._onClose) dialog._onClose();
+}
+
+// -------------------------------------------------------
+// Opis dań z danego dnia (kliknięcie daty w tabeli)
+// -------------------------------------------------------
+
+function openDayInfo(row) {
+  if (!row || !row.classList.contains('has-info')) return;
+  dayInfoRow = row;
+  renderDayInfo();
+  const dishes = [row.cells[3], row.cells[5]]
+    .filter(cell => cell.textContent.trim())
+    .map(cell => ({ name: cell.textContent.trim(), kind: cell.classList.contains('cell-first-dish') ? 'zupa' : 'drugie' }));
+  fetchDishDescriptions(dishes);
+}
+
+function dayInfoDishHtml(row, index) {
+  const cell = row.cells[index === 0 ? 3 : 5];
+  const box = row.querySelectorAll('.dish-checkbox')[index];
+  const name = cell.textContent.trim();
+  if (!name || !box) return '';
+  const info = dishDescriptions.get(name);
+  let description;
+  if (!info) {
+    description = '<p class="day-info-note">Wczytuję opis dania</p>';
+  } else if (info.text) {
+    description = `<p>${escapeHtml(info.text)}</p>` +
+      (DISH_SOURCE_LABELS[info.source] ? `<small class="day-info-note">${DISH_SOURCE_LABELS[info.source]}</small>` : '');
+  } else {
+    description = '<p class="day-info-note">Brak opisu tego dania</p>';
+  }
+  const extras = [
+    cell.dataset.deser && `🍰 Deser: ${escapeHtml(cell.dataset.deser)}`,
+    cell.dataset.alergeny && `⚠️ Alergeny: ${escapeHtml(cell.dataset.alergeny)}`
+  ].filter(Boolean).map(text => `<small>${text}</small>`).join('');
+  return `
+    <section class="day-info-dish ${index === 0 ? 'is-soup' : 'is-main'}">
+      <span class="day-info-kind">${index === 0 ? 'Zupa' : 'Drugie danie'}</span>
+      <strong>${escapeHtml(name)}</strong>
+      ${description}
+      ${extras}
+      <button type="button" class="day-info-toggle ${box.checked ? 'is-on' : ''}" data-action="toggle-${index}" aria-pressed="${box.checked}">
+        ${box.checked ? 'Zamówione' : 'Nie zamawiam'}
+      </button>
+    </section>`;
+}
+
+function renderDayInfo() {
+  const row = dayInfoRow;
+  if (!row || !row.isConnected) return;
+  const html = `
+    <div class="app-dialog-head">
+      <h3 class="app-dialog-title">${WEEKDAY_FULL[Number(row.dataset.wd)] || ''}, ${escapeHtml(row.cells[1].textContent.trim())}</h3>
+      <button type="button" class="btn btn-primary btn-sm" data-action="close">Zamknij</button>
+    </div>
+    ${dayInfoDishHtml(row, 0)}
+    ${dayInfoDishHtml(row, 1)}`;
+  openAppDialog('dayInfo', html, action => {
+    const index = action === 'toggle-0' ? 0 : action === 'toggle-1' ? 1 : -1;
+    const box = index >= 0 ? row.querySelectorAll('.dish-checkbox')[index] : null;
+    if (box) {
+      box.checked = !box.checked;
+      box.dispatchEvent(new Event('change'));
+      renderDayInfo();
+    }
+    return true;
+  }, { sheet: true, label: 'Opis dań z wybranego dnia', onClose: () => { dayInfoRow = null; } });
+}
+
+function refreshDayInfo() {
+  if (dayInfoRow && document.getElementById('dayInfo')) renderDayInfo();
+}
+
+// -------------------------------------------------------
+// Kopia danych z tej przeglądarki (plik na telefonie lub komputerze)
+// -------------------------------------------------------
+// Dane są tylko w localStorage, więc giną przy czyszczeniu przeglądarki
+// albo zmianie telefonu. Kopia to zwykły plik JSON, który zostaje u rodzica;
+// wczytanie dopisuje brakujące dane i niczego nie kasuje.
+
+function isBackupKey(key) {
+  return key === DECLARATIONS_KEY || key.startsWith(STORAGE_KEYS.selectionsPrefix) ||
+    [STORAGE_KEYS.childName, STORAGE_KEYS.childClass, STORAGE_KEYS.healthNotes, STORAGE_KEYS.signature].includes(key);
+}
+
+function exportLocalData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (isBackupKey(key)) data[key] = localStorage.getItem(key);
+  }
+  const declarations = Object.keys(loadDeclarations()).length;
+  const months = Object.keys(data).filter(key => key.startsWith(STORAGE_KEYS.selectionsPrefix)).length;
+  if (!declarations && !months) {
+    showSimpleToast('Na tym urządzeniu nie ma jeszcze zapisanych wyborów ani deklaracji', 'info');
+    return;
+  }
+  const now = new Date();
+  const stamp = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+  const file = JSON.stringify({ app: BACKUP_APP_ID, version: 1, exportedAt: now.toISOString(), data });
+  downloadBlob(new Blob([file], { type: 'application/json' }), `obiady-kopia-${stamp}.json`);
+  showSimpleToast(`Zapisano kopię: ${describeBackup(declarations, months)}`, 'success');
+}
+
+function describeBackup(declarations, months) {
+  return `${declarations} ${polishPlural(declarations, 'deklaracja', 'deklaracje', 'deklaracji')}, ` +
+    `${months} ${polishPlural(months, 'miesiąc', 'miesiące', 'miesięcy')} z wyborami`;
+}
+
+// Pozycja "Moje deklaracje" z pliku: tylko poprawne dane (liczby jako liczby)
+function cleanImportedDeclaration(entry) {
+  if (!entry || typeof entry !== 'object' || !Array.isArray(entry.sends) || !Array.isArray(entry.days)) return null;
+  const month = Number(entry.month);
+  const year = Number(entry.year);
+  if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year) || year < 2000 || year > 2100) return null;
+  const numbers = obj => Object.fromEntries(Object.entries(obj && typeof obj === 'object' ? obj : {}).map(([k, v]) => [k, Number(v) || 0]));
+  return Object.assign({}, entry, {
+    month,
+    year,
+    child: entry.child && typeof entry.child === 'object' ? entry.child : { name: '', cls: '', health: 'brak' },
+    prices: numbers(entry.prices),
+    counts: numbers(entry.counts),
+    total: Number(entry.total) || 0,
+    sends: entry.sends.filter(send => send && typeof send === 'object' && Array.isArray(send.days))
+      .map(send => Object.assign({}, send, { total: Number(send.total) || 0, counts: numbers(send.counts) }))
+  });
+}
+
+async function importLocalData(file) {
+  let backup = null;
+  try {
+    backup = JSON.parse(await file.text());
+  } catch (error) {
+    backup = null;
+  }
+  if (!backup || backup.app !== BACKUP_APP_ID || !backup.data || typeof backup.data !== 'object') {
+    showSimpleToast('To nie jest plik z kopią danych z tej strony', 'error');
+    return;
+  }
+
+  let declarations = 0;
+  let months = 0;
+  Object.entries(backup.data).forEach(([key, value]) => {
+    if (typeof value !== 'string' || !isBackupKey(key)) return;
+    if (key === DECLARATIONS_KEY) {
+      let imported = {};
+      try {
+        imported = JSON.parse(value).entries || {};
+      } catch (error) {
+        imported = {};
+      }
+      const entries = loadDeclarations();
+      Object.entries(imported).forEach(([entryKey, raw]) => {
+        const entry = cleanImportedDeclaration(raw);
+        if (!entry) return;
+        // Ta sama deklaracja na obu urządzeniach: zostaje nowsza
+        if (!entries[entryKey] || String(entry.updatedAt) > String(entries[entryKey].updatedAt)) {
+          entries[entryKey] = entry;
+          declarations++;
+        }
+      });
+      storeDeclarations(entries);
+    } else if (key.startsWith(STORAGE_KEYS.selectionsPrefix)) {
+      // Wybory zrobione już na tym urządzeniu mają pierwszeństwo
+      if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, value);
+        months++;
+      }
+    } else if (!localStorage.getItem(key) || (key === STORAGE_KEYS.healthNotes && localStorage.getItem(key) === 'brak')) {
+      localStorage.setItem(key, value);
+    }
+  });
+
+  loadSavedData();
+  renderDeclarationArchive();
+  const monthYear = getMonthYear();
+  if (monthYear) applySelections(loadSelections(monthYear));
+  showSimpleToast(declarations || months
+    ? `Wczytano z kopii: ${describeBackup(declarations, months)}`
+    : 'Wszystko z tej kopii jest już na tym urządzeniu', 'success');
+}
+
+function initComfortFeatures() {
+  // Zmiany zaznaczeń (także wywołane z kodu, bez bąbelkowania) łapiemy w fazie przechwytywania
+  document.getElementById('menuTable')?.addEventListener('change', event => {
+    if (!event.target.classList || !event.target.classList.contains('dish-checkbox')) return;
+    scheduleDeclarationRefresh();
+    updateWeekdayChips();
+  }, true);
+  ['firstCoursePrice', 'secondCoursePrice', 'comboPrice'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', scheduleDeclarationRefresh);
+  });
+  document.getElementById('weekdayBar')?.addEventListener('click', event => {
+    const chip = event.target.closest('.weekday-chip');
+    if (chip && !chip.disabled) toggleWeekday(Number(chip.dataset.wd));
+  });
+  document.getElementById('exportDataBtn')?.addEventListener('click', exportLocalData);
+  const importInput = document.getElementById('importDataInput');
+  importInput?.addEventListener('change', () => {
+    const file = importInput.files[0];
+    if (file) importLocalData(file).finally(() => { importInput.value = ''; });
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') document.querySelectorAll('.app-dialog').forEach(dialog => closeAppDialog(dialog.id));
+  });
+}
+
+// ============================================
 // INICJALIZACJA - Czeka na załadowanie DOM
 // ============================================
 
@@ -3969,6 +4326,7 @@ if (document.readyState === 'loading') {
     loadHistory();
     loadSavedData(); // DODAJ TĘ LINIĘ
     initDeclarationArchive();
+    initComfortFeatures();
     attachFormListeners(); // DODAJ TĘ LINIĘ
     console.log('✅ Aplikacja gotowa!');
   });
@@ -3977,6 +4335,7 @@ if (document.readyState === 'loading') {
   loadHistory();
   loadSavedData(); // DODAJ TĘ LINIĘ
   initDeclarationArchive();
+  initComfortFeatures();
   attachFormListeners(); // DODAJ TĘ LINIĘ
   console.log('✅ Aplikacja gotowa!');
 }

@@ -1566,36 +1566,9 @@ body.dark-theme .icon-moon {
    OKNA TWORZONE W SCRIPT.JS
    ============================================ */
 
-#duplicateModal,
 #emailPreviewPanel {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
-}
-
-#duplicateModal > div {
-  margin: 16px;
-  padding: 28px !important;
-  border-radius: var(--radius-lg) !important;
-  background: var(--surface) !important;
-  color: var(--text) !important;
-}
-
-#duplicateModal h4 {
-  color: var(--accent) !important;
-  font-weight: 750;
-}
-
-#duplicateModal p {
-  color: var(--text) !important;
-}
-
-#duplicateModal button {
-  border-radius: 12px !important;
-  font-weight: 650;
-}
-
-#duplicateModal button:last-child {
-  background: var(--primary) !important;
 }
 
 #emailPreviewPanel > div {
@@ -1784,10 +1757,6 @@ body.dark-theme .app-toast {
     right: 16px;
     align-items: stretch;
     max-width: none;
-  }
-
-  #duplicateModal > div {
-    max-width: calc(100% - 32px);
   }
 }
 
@@ -2111,6 +2080,327 @@ body.dark-theme .app-toast {
 /* Dymek z opisem dania (Tippy): dopisek o źródle opisu jest przygaszony */
 .tippy-box .dish-tip-note {
   opacity: 0.7;
+}
+
+/* ============================================
+   UDOGODNIENIA (CZĘŚĆ 17 w script.js)
+   ============================================ */
+
+/* Jadłospis otwarty teraz w tabeli */
+.history-item.is-open {
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.history-badge.is-open-badge {
+  background: var(--main);
+}
+
+/* Miesiąc jadłospisu w nagłówku kroku 2 */
+.month-badge {
+  margin-left: auto;
+  align-self: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.menu-hint {
+  margin: -6px 0 12px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.only-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .only-mobile {
+    display: inline;
+  }
+
+  .only-desktop {
+    display: none;
+  }
+}
+
+/* Dni tygodnia jednym kliknięciem */
+.weekday-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.weekday-bar-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.weekday-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.weekday-chip {
+  min-width: 52px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.weekday-chip.is-all {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.weekday-chip.is-partial {
+  border-color: var(--soup);
+  background: var(--soup-soft);
+  color: var(--soup);
+}
+
+.weekday-chip.is-none {
+  border-style: dashed;
+  text-decoration: line-through;
+}
+
+.weekday-chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.weekday-chip:focus-visible {
+  outline: 3px solid var(--primary-ring);
+  outline-offset: 2px;
+}
+
+/* Data dnia otwiera okno z opisem dań */
+.menu-table tbody tr.has-info td:nth-child(2),
+.menu-table tbody tr.has-info td:nth-child(3) {
+  cursor: pointer;
+}
+
+@media (min-width: 769px) {
+  .menu-table tbody tr.has-info td:nth-child(2):hover {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+  }
+}
+
+@media (max-width: 768px) {
+  .menu-table tbody tr.has-info td:nth-child(3) {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .menu-table tr.table-secondary td.cell-first-dish::before,
+  .menu-table tr.table-secondary td.cell-second-dish::before {
+    content: none;
+  }
+
+  .menu-table tbody tr.has-info td:nth-child(3)::after {
+    content: "i";
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-family: Georgia, serif;
+    font-size: 0.75rem;
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+}
+
+/* Tabela deklaracji aktualizuje się sama */
+.live-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Wspólne okno dialogowe (na telefonie opis dnia wysuwa się od dołu) */
+.app-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.app-dialog-box {
+  width: 100%;
+  max-width: 500px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.app-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.app-dialog-title {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.app-dialog-head .app-dialog-title {
+  margin: 0;
+}
+
+.app-dialog-box p {
+  overflow-wrap: anywhere;
+}
+
+.app-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .app-dialog.is-sheet {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .app-dialog.is-sheet .app-dialog-box {
+    max-width: none;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+.day-info-dish {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.day-info-dish + .day-info-dish {
+  margin-top: 10px;
+}
+
+.day-info-kind {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.day-info-dish.is-soup .day-info-kind {
+  color: var(--soup);
+}
+
+.day-info-dish.is-main .day-info-kind {
+  color: var(--main);
+}
+
+.day-info-dish > strong {
+  display: block;
+  margin: 2px 0 6px;
+}
+
+.day-info-dish p {
+  margin: 0 0 4px;
+  font-size: 0.92rem;
+}
+
+.day-info-dish small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+.day-info-note {
+  color: var(--muted);
+}
+
+.day-info-toggle {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.day-info-toggle.is-on {
+  border-style: solid;
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+/* Stopka z kopią danych */
+.app-footer {
+  margin-top: 28px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.app-footer p {
+  max-width: 640px;
+  margin: 0 auto 12px;
+}
+
+.app-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.app-footer-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
