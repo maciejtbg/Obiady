@@ -26,10 +26,14 @@ Narzędzie webowe do wczytywania jadłospisu szkolnej stołówki (Word, PDF albo
 - Odporność na zmiany układu, nazewnictwa i literówki w jadłospisie
 - Wspólna lista jadłospisów wczytanych przez rodziców (zapis do MySQL); przy wejściu na stronę najnowszy otwiera się sam, a ponowne wgranie tego samego pliku proponuje otwarcie zapisanego wyniku
 - Cały dzień tygodnia (np. wszystkie piątki) zaznaczany albo odznaczany jednym przyciskiem
+- Czego dziecko nie je: gotowe opcje (kurczak, indyk, wieprzowina, wołowina, każde mięso, zupy na mięsie, ryby, jajka, grzyby, nabiał, gluten, seler, orzechy, soja) i własne słowa. Dania są rozpoznawane po nazwie także pośrednio (filet z piersi, udko, nuggetsy i kotlet pożarski to kurczak, schab i szynka to wieprzowina, pierogi ruskie mają twaróg, kapusta to też kapuśniak i gołąbki) i po numerach alergenów z jadłospisu. Pewne dopasowania są odznaczane, prawdopodobne oznaczane „sprawdź”; w nowym miesiącu działa to samo, a wybory zmienione ręcznie zostają
 - Wybór konkretnych obiadów i generowanie tabeli do deklaracji
 - Opisy dań (AI albo Wikipedia), zapamiętywane w bazie: na komputerze w dymkach, a po kliknięciu daty w oknie dnia z deserem, alergenami i możliwością odznaczenia dania (także na telefonie)
 - Moje deklaracje: każdy zdeklarowany miesiąc zapisuje się tylko w przeglądarce (localStorage, nic nie trafia na serwer), z wybranymi obiadami, kwotą do zapłaty, terminem wpłaty, historią wysyłek (e-mail, PDF, kopiowanie) i podglądem wysłanej deklaracji; miesiąc można ponownie otworzyć w tabeli i oznaczyć jako zapłacony
-- Kopia danych z przeglądarki do pliku JSON (zaznaczenia, dane dziecka, Moje deklaracje) i wczytanie jej na innym urządzeniu; wczytanie tylko dopisuje brakujące dane
+- Kopia danych z przeglądarki do pliku JSON (zaznaczenia, dane dziecka, Moje deklaracje, lista „nie je”) i wczytanie jej na innym urządzeniu; wczytanie tylko dopisuje brakujące dane
+- Przypomnienia w kalendarzu o terminach z deklaracji (wpłata do 10. dnia miesiąca, deklaracja na kolejny miesiąc do końca miesiąca): link do Kalendarza Google albo plik .ics z `calendar.php` (iPhone, Outlook)
+- Strona jak aplikacja na telefonie: `manifest.webmanifest`, ikony w `icons/` i `sw.js` (ostatnio wczytana wersja działa też bez internetu)
+- Błędy strony z przeglądarek rodziców zapisują się w tabeli `js_errors` (`log_error.php`, bez danych osobowych) i są widoczne w statystykach
 - Kalendarz na lodówkę (TXT, DOCX, PDF): cały miesiąc z informacją, w które dni jest zamówiona zupa i/lub drugie danie, z nazwami dań albo bez
 - Tryb ciemny/jasny, statystyki odwiedzin
 

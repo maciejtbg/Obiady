@@ -22,6 +22,91 @@
 // Aktualna strona pyta o historię z parametrem v, stara bez niego (get_history.php)
 const HISTORY_API_VERSION = 2;
 
+// Błędy strony u rodziców trafiają na serwer (log_error.php, widać je w stats.php).
+// Wysyłamy opis błędu, miejsce w kodzie, wersję strony i szerokość ekranu; bez treści
+// jadłospisu, danych dziecka i adresów e-mail. Najwyżej kilka zgłoszeń na wizytę.
+const ErrorReporter = (function () {
+  const MAX_REPORTS = 8;
+  const NETWORK_RE = /failed to fetch|networkerror|load failed|network error|aborterror|the operation was aborted|nie udało się załadować/i;
+  const scriptSrc = document.currentScript ? document.currentScript.src : '';
+  const version = (scriptSrc.match(/[?&]v=([\w-]+)/) || [])[1] || 'brak';
+  const sent = new Set();
+  let count = 0;
+
+  function shortUrl(url) {
+    try {
+      const parsed = new URL(url, location.href);
+      return parsed.origin === location.origin ? parsed.pathname.split('/').pop() || '/' : parsed.host + parsed.pathname;
+    } catch (e) {
+      return String(url).split('?')[0];
+    }
+  }
+
+  function clean(text, max) {
+    return String(text == null ? '' : text)
+      .replace(/https?:\/\/[^\s)'"]+/g, shortUrl)
+      .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[e-mail]')
+      .replace(/\d{7,}/g, '[liczba]')
+      .slice(0, max);
+  }
+
+  function report(kind, message, details) {
+    try {
+      const info = details || {};
+      const text = clean(message, 300).trim();
+      if (!text || NETWORK_RE.test(text) || count >= MAX_REPORTS) return;
+      const key = [kind, text, info.source || '', info.line || 0].join('|');
+      if (sent.has(key)) return;
+      sent.add(key);
+      count++;
+      fetch('log_error.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          kind,
+          message: text,
+          source: info.source ? shortUrl(info.source) : '',
+          line: Number(info.line) || 0,
+          col: Number(info.col) || 0,
+          stack: clean(info.stack, 1500),
+          version,
+          app: (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true ? 1 : 0,
+          width: window.innerWidth || 0
+        })
+      }).catch(() => {});
+    } catch (e) {
+      // zgłaszanie błędów nie może samo psuć strony
+    }
+  }
+
+  window.addEventListener('error', event => {
+    const source = event.filename || '';
+    // "Script error." to błąd w skrypcie z innej domeny (bez szczegółów),
+    // a pliki rozszerzeń przeglądarki to nie nasz kod
+    if (!event.message || /^script error\.?$/i.test(event.message)) return;
+    if (source && !source.startsWith(location.origin)) return;
+    report('blad', event.message, { source, line: event.lineno, col: event.colno, stack: event.error && event.error.stack });
+  });
+
+  window.addEventListener('unhandledrejection', event => {
+    const reason = event.reason;
+    report('promise', reason && reason.message ? reason.message : String(reason), { stack: reason && reason.stack });
+  });
+
+  // Błędy złapane w kodzie (console.error z obiektem Error) też są ważne
+  const consoleError = console.error.bind(console);
+  console.error = function (...args) {
+    consoleError(...args);
+    const error = args.find(arg => arg instanceof Error);
+    if (!error) return;
+    const label = typeof args[0] === 'string' ? args[0].replace(/^[^A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]+/, '').replace(/:\s*$/, '') : '';
+    report('obsluzony', (label ? label + ': ' : '') + error.message, { stack: error.stack });
+  };
+
+  return { report };
+})();
+
 // ============================================
 // CZĘŚĆ 1: ZMIENNE GLOBALNE I ELEMENTY DOM
 // ============================================
@@ -746,6 +831,16 @@ function showParseWarnings(warnings) {
   box.classList.remove('d-none');
 }
 
+// Pole alergenów z tabeli bywa sklejone z dodatkami, np.
+// "Surówka z białej kapusty (80 g), | Alergeny: 1, 3": dodatki i numery osobno
+function splitAllergenField(text) {
+  const value = String(text || '').trim();
+  const match = value.match(/^(.*?)\|?\s*alergeny\s*:?\s*([\d\s,;.]*)$/i);
+  if (match) return { extras: match[1].replace(/[\s,|;]+$/, '').trim(), codes: match[2].replace(/[\s,;.]+$/, '').trim() };
+  if (/^[\d\s,;.]+$/.test(value)) return { extras: '', codes: value.replace(/[\s,;.]+$/, '') };
+  return { extras: value.replace(/[\s,|;]+$/, ''), codes: '' };
+}
+
 function parseMenuFromTableData(dane, ctx) {
   const { debugEnabled, debugBox, menuTableBody } = ctx;
 
@@ -770,11 +865,13 @@ function parseMenuFromTableData(dane, ctx) {
         monthName = getMonthName(monthNumber) || monthName;
       }
 
+      const allergenInfo = splitAllergenField(d.alergeny);
       parsedDates[dateKey] = {
         pierwszeDanie: (d.zupa || '').trim() || null,
         drugieDanie: (d.drugieDanie || '').trim() || null,
         deser: (d.deser || '').trim(),
-        alergeny: (d.alergeny || '').trim()
+        dodatki: allergenInfo.extras,
+        alergeny: allergenInfo.codes
       };
 
       if (debugEnabled && debugBox) {
@@ -1052,6 +1149,7 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
         // tylko w dymku z definicją, nie wchodzi do samej nazwy dania.
         if (parsedDates[dateKey].deser) cellDrugie.dataset.deser = parsedDates[dateKey].deser;
         if (parsedDates[dateKey].alergeny) cellDrugie.dataset.alergeny = parsedDates[dateKey].alergeny;
+        if (parsedDates[dateKey].dodatki) cellDrugie.dataset.dodatki = parsedDates[dateKey].dodatki;
         
         const checkboxDrugie = document.createElement('input');
         checkboxDrugie.type = 'checkbox';
@@ -1099,6 +1197,9 @@ function renderMenuCalendar(parsedDates, monthNumber, monthName, ctx) {
       applySelections(savedSelections);
       console.log(`✅ Przywrócono wybory dla ${monthYear}`);
     }
+    // Lista "Czego dziecko nie je" (CZĘŚĆ 18): w nowym miesiącu odznacza sama
+    const foodChange = reconcileFoodRules(!savedSelections);
+    if (foodChange.unchecked) showSimpleToast(describeFoodChange(foodChange), 'success');
 
 attachSummaryListeners();
     attachTooltipListeners();
@@ -1261,9 +1362,20 @@ function dishTooltipContent(el) {
   } else {
     html = '<span class="dish-tip-note">Brak opisu tego dania</span>';
   }
-  if (el.dataset.deser) html += `<br><small>🍰 Deser: ${escapeHtml(el.dataset.deser)}</small>`;
-  if (el.dataset.alergeny) html += `<br><small>⚠️ Alergeny: ${escapeHtml(el.dataset.alergeny)}</small>`;
+  dishExtraLines(el).forEach(line => { html += `<br><small>${line}</small>`; });
   return html;
+}
+
+// Dodatki, deser, alergeny i to, czego dziecko nie je (dymek i okno dnia)
+function dishExtraLines(cell) {
+  const lines = [];
+  if (cell.dataset.dodatki) lines.push(`🥗 Dodatki: ${escapeHtml(cell.dataset.dodatki)}`);
+  if (cell.dataset.deser) lines.push(`🍰 Deser: ${escapeHtml(cell.dataset.deser)}`);
+  if (cell.dataset.alergeny) lines.push(`⚠️ Alergeny: ${escapeHtml(describeAllergens(cell.dataset.alergeny))}`);
+  foodHitsForCell(cell).forEach(hit => {
+    lines.push(hit.level === 'tak' ? `🚫 Dziecko nie je: ${escapeHtml(hit.why)}` : `❔ Sprawdź: ${escapeHtml(hit.why)}`);
+  });
+  return lines;
 }
 
 function refreshDishTooltips() {
@@ -2387,6 +2499,7 @@ function changeSignatureThickness(thickness) {
 // Wygląd i animacje powiadomień są w styles.css (.app-toast).
 // Kilka powiadomień naraz układa się jedno pod drugim w #toastStack.
 function showSimpleToast(message, type = 'info') {
+  if (type === 'error') ErrorReporter.report('komunikat', message);
   let stack = document.getElementById('toastStack');
   if (!stack) {
     stack = document.createElement('div');
@@ -3808,6 +3921,10 @@ function initDeclarationArchive() {
     if (button.dataset.action === 'show') showArchivedDeclaration(key, Number(button.dataset.index));
     if (button.dataset.action === 'open') openArchivedMonth(key);
     if (button.dataset.action === 'delete') deleteArchivedDeclaration(key);
+    if (button.dataset.action === 'remind') {
+      const entry = loadDeclarations()[key];
+      if (entry) openReminderDialog({ month: entry.month, year: entry.year }, (entry.sends[entry.sends.length - 1] || entry).total);
+    }
   });
   list.addEventListener('change', event => {
     const key = event.target.closest('details')?.dataset.key;
@@ -3898,6 +4015,7 @@ function renderDeclarationEntry(key, entry) {
 
         <div class="archive-actions">
           ${entry.menu ? '<button type="button" class="btn btn-soft btn-sm" data-action="open">Otwórz ten miesiąc w tabeli</button>' : ''}
+          ${!entry.paidAt && getReminderPlan({ month: entry.month, year: entry.year }, shown.total).length ? '<button type="button" class="btn btn-soft btn-sm" data-action="remind">Przypomnij w kalendarzu</button>' : ''}
           <button type="button" class="btn btn-link-muted btn-sm" data-action="delete">Usuń z tej przeglądarki</button>
         </div>
       </div>
@@ -4159,10 +4277,7 @@ function dayInfoDishHtml(row, index) {
   } else {
     description = '<p class="day-info-note">Brak opisu tego dania</p>';
   }
-  const extras = [
-    cell.dataset.deser && `🍰 Deser: ${escapeHtml(cell.dataset.deser)}`,
-    cell.dataset.alergeny && `⚠️ Alergeny: ${escapeHtml(cell.dataset.alergeny)}`
-  ].filter(Boolean).map(text => `<small>${text}</small>`).join('');
+  const extras = dishExtraLines(cell).map(text => `<small>${text}</small>`).join('');
   return `
     <section class="day-info-dish ${index === 0 ? 'is-soup' : 'is-main'}">
       <span class="day-info-kind">${index === 0 ? 'Zupa' : 'Drugie danie'}</span>
@@ -4210,6 +4325,7 @@ function refreshDayInfo() {
 
 function isBackupKey(key) {
   return key === DECLARATIONS_KEY || key.startsWith(STORAGE_KEYS.selectionsPrefix) ||
+    key === FOOD_PREFS_KEY || key.startsWith(FOOD_APPLIED_PREFIX) ||
     [STORAGE_KEYS.childName, STORAGE_KEYS.childClass, STORAGE_KEYS.healthNotes, STORAGE_KEYS.signature].includes(key);
 }
 
@@ -4290,6 +4406,25 @@ async function importLocalData(file) {
         }
       });
       storeDeclarations(entries);
+    } else if (key === FOOD_PREFS_KEY) {
+      // Lista "nie je" z obu urządzeń razem
+      let imported = null;
+      try {
+        imported = JSON.parse(value);
+      } catch (error) {
+        imported = null;
+      }
+      if (imported && typeof imported === 'object') {
+        const prefs = loadFoodPrefs();
+        (Array.isArray(imported.rules) ? imported.rules : []).forEach(id => {
+          if (FOOD_RULES.some(rule => rule.id === id) && !prefs.rules.includes(id)) prefs.rules.push(id);
+        });
+        (Array.isArray(imported.words) ? imported.words : []).forEach(word => {
+          if (typeof word !== 'string' || !word.trim()) return;
+          if (!prefs.words.some(existing => foodWordStem(existing) === foodWordStem(word))) prefs.words.push(word.trim().slice(0, 40));
+        });
+        saveFoodPrefs({ rules: prefs.rules, words: prefs.words.slice(0, 30) });
+      }
     } else if (key.startsWith(STORAGE_KEYS.selectionsPrefix)) {
       // Wybory zrobione już na tym urządzeniu mają pierwszeństwo
       if (localStorage.getItem(key) === null) {
@@ -4304,7 +4439,10 @@ async function importLocalData(file) {
   loadSavedData();
   renderDeclarationArchive();
   const monthYear = getMonthYear();
-  if (monthYear) applySelections(loadSelections(monthYear));
+  if (monthYear) {
+    applySelections(loadSelections(monthYear));
+    reconcileFoodRules(false);
+  }
   showSimpleToast(declarations || months
     ? `Wczytano z kopii: ${describeBackup(declarations, months)}`
     : 'Wszystko z tej kopii jest już na tym urządzeniu', 'success');
@@ -4336,6 +4474,866 @@ function initComfortFeatures() {
 }
 
 // ============================================
+// CZĘŚĆ 18: CZEGO DZIECKO NIE JE
+// ============================================
+// Rodzic raz zaznacza, czego dziecko nie je (np. kurczak, ryby, grzyby), albo wpisuje
+// własne słowo. Dania rozpoznajemy po nazwie, także pośrednio: filet z piersi, udko,
+// nuggetsy i kotlet pożarski to kurczak, schab i szynka to wieprzowina, pierogi ruskie
+// mają twaróg. Liczą się też numery alergenów z jadłospisu (np. 3 = jaja).
+// Pewne dopasowania odznaczamy, prawdopodobne tylko oznaczamy "sprawdź".
+// W nowym miesiącu reguły działają same. Gdy rodzic już coś w miesiącu zmieniał,
+// nie ruszamy jego wyborów, tylko proponujemy odznaczenie jednym kliknięciem.
+// Wyłączenie reguły zaznacza z powrotem dania, które ta reguła odznaczyła.
+
+const FOOD_PREFS_KEY = 'meal_food_exclusions';
+const FOOD_APPLIED_PREFIX = 'meal_food_applied_'; // + MIESIAC_ROK: które reguły odznaczyły które dania
+const ALLERGEN_NAMES = {
+  1: 'gluten', 2: 'skorupiaki', 3: 'jaja', 4: 'ryby', 5: 'orzeszki ziemne', 6: 'soja', 7: 'mleko',
+  8: 'orzechy', 9: 'seler', 10: 'gorczyca', 11: 'sezam', 12: 'siarczyny', 13: 'łubin', 14: 'mięczaki'
+};
+const PLANT_BASED_RE = /\bwegansk|\bwegetarian|\bwege\b|caly obiad roslinny/;
+// Mięso bez nazwy zwierzęcia (klopsy, mielone, gołąbki) i słowa, które mówią, co to za mięso
+const UNNAMED_MEAT_RE = /\bmielon|\bklops|\bpulpe|\bfrykadel|\bgolab|\bpierog\w* z mies|\bbolognese|\bbolonsk|\blasagn|\bburger|\bgulasz|\bzur(ek|ku|kiem)\b/;
+const NAMED_FOOD_RE = /drob|indy|kurcz|ryb|warzyw|soj|soczewic|ciecierz|wege|kalafior|wolow|wieprz|schab|szynk|\bwp\./;
+
+// p: wzorzec na tekście bez polskich znaków, why: wyjaśnienie dla rodzica,
+// maybe: tylko prawdopodobne (oznaczamy, nie odznaczamy), unless: wyklucza dopasowanie.
+// core: liczy się tylko samo danie, bez dodatków (surówka z kapusty nie odznacza kotleta).
+const FOOD_RULES = [
+  { id: 'kurczak', label: 'Kurczak', group: 'meat', meat: true,
+    aliases: ['kurczak', 'kurczaki', 'kurczęta', 'kurczę', 'pierś', 'drób', 'drobiowe'],
+    note: 'Kurczak to też filet z piersi, udko, nuggetsy, popsy, kotlet pożarski i dania drobiowe.',
+    patterns: [
+      { p: /\bkurcz/, why: 'kurczak' },
+      { p: /\bpiers/, unless: /indy|kacz/, why: 'filet z piersi (kurczak)' },
+      { p: /\budk|\budzi?ec|\bpodud|\bskrzyd/, unless: /indy|kacz/, why: 'udko lub skrzydełka (kurczak)' },
+      { p: /\bnug+ets|\bpops|\bstrips/, unless: /ryb|ser|warzyw/, why: 'nuggetsy, popsy lub stripsy (z kurczaka)' },
+      { p: /\bpozarsk/, why: 'kotlet pożarski (z kurczaka)' },
+      { p: /\bde ?vol|\bdevol/, why: 'de volaille (kurczak)' },
+      { p: /\bdrob\b|\bdrobi/, unless: /wywar|rosol/, why: 'drób (zwykle kurczak)' },
+      { p: /\bgyros|\bkebab|\bszoarm|\bshoarm/, unless: /wieprz|wolow|indy|soj|warzyw/, maybe: true, why: 'gyros lub kebab (zwykle z kurczaka)' },
+      { p: /\bfilecik/, unless: /ryb|dorsz|mintaj|mirun|morszczuk|losos|indy/, maybe: true, keepMaybe: true, why: 'fileciki (kurczak albo ryba)' }
+    ] },
+  { id: 'indyk', label: 'Indyk', group: 'meat', meat: true,
+    aliases: ['indyk', 'indyka', 'indyczka'],
+    patterns: [
+      { p: /\bindy[kc]/, why: 'indyk' },
+      { p: /\bdrob\b|\bdrobi/, unless: /wywar|rosol/, maybe: true, why: 'drób (może być indyk)', whyMeat: 'drób' }
+    ] },
+  { id: 'wieprzowina', label: 'Wieprzowina', group: 'meat', meat: true,
+    aliases: ['wieprzowina', 'wieprzowe', 'świnina', 'schab', 'szynka', 'kiełbasa', 'boczek'],
+    note: 'Wieprzowina to też schab, szynka, kiełbasa i boczek. Kotlet mielony, klopsy i gołąbki bez podanego mięsa oznaczamy do sprawdzenia.',
+    patterns: [
+      { p: /\bwieprz|\bwp\./, why: 'wieprzowina' },
+      { p: /\bschab|\bpo parysku/, why: 'schab (wieprzowina)' },
+      { p: /\bszynk|\bbocz(ek|ku|kiem)\b|\bkielbas|\bparow(ek|k)|\bkabanos|\bkarkow|\bzeber|\blopatk|\bgolon|\bslonin|\bsmalec|\bsalami|\bpancet/, why: 'wędlina lub wieprzowina' },
+      { p: /\bbigos|\bpo bretonsku/, why: 'z kiełbasą lub boczkiem' },
+      { p: UNNAMED_MEAT_RE, unless: NAMED_FOOD_RE, maybe: true, why: 'mięso bez nazwy (często wieprzowina)', whyMeat: 'mięso mielone, klopsy lub gołąbki' }
+    ] },
+  { id: 'wolowina', label: 'Wołowina', group: 'meat', meat: true,
+    aliases: ['wołowina', 'wołowe', 'cielęcina'],
+    patterns: [
+      { p: /\bwolow|\bbefsztyk|\brostbef|\bstek\b|\bcielec/, why: 'wołowina lub cielęcina' },
+      { p: /\bstrogonow|\bstrogonof/, maybe: true, why: 'strogonow (zwykle wołowina)', whyMeat: 'strogonow' },
+      { p: UNNAMED_MEAT_RE, unless: NAMED_FOOD_RE, maybe: true, why: 'mięso bez nazwy (bywa wołowina)', whyMeat: 'mięso mielone, klopsy lub gołąbki' }
+    ] },
+  { id: 'mieso', label: 'Każde mięso', short: 'mięso', group: 'meat', meat: true,
+    aliases: ['mięso', 'mięsne', 'wegetarianin', 'wegetariańskie', 'wege', 'bez mięsa'],
+    note: 'Każde mięso to dania z mięsem i drobiem. Ryby i zupy na mięsie wybierz osobno.',
+    patterns: [] }, // uzupełniane niżej z reguł kurczaka, indyka, wieprzowiny i wołowiny
+  { id: 'wywar', label: 'Zupy na mięsie', short: 'wywar mięsny', group: 'meat', soupOnly: true,
+    aliases: ['rosół', 'wywar', 'zupy na mięsie', 'wywar mięsny'],
+    note: 'Zupy na mięsie to rosół i zupy na wywarze mięsnym lub drobiowym. Zupy bez podanego wywaru oznaczamy do sprawdzenia.',
+    patterns: [
+      { p: /\brosol/, unless: /rosol\w* warzywn|wywar\w* warzywn/, why: 'rosół' },
+      { p: /\bwywar\w* (miesn|drob|wolow|wieprz|z kurcz|z indy|z kosc)|\bna miesie|\bna kosciach/, why: 'wywar mięsny' },
+      { p: /\bz (kurczak|indyk|miesem|kielbas|boczk|zeberk|szynk)/, why: 'mięso w zupie' },
+      { p: /\bkrupnik|\bkapusniak|\bgroch|\bzur(ek|ku)?\b|\bfasol|\bbarszcz ukrainsk|\bgulaszow|\bflaki|\bjarzynow|\bogorkow|\bpomidorow|\bkalafiorow|\bbrokulow|\bkoperkow|\bporow|\bwielowarzywn|\bburaczkow|\bszczawiow|\bminestrone|\bryzow/, unless: /wywar\w* warzywn|na wodzie|wege|roslinn/, maybe: true, why: 'nie podano, na jakim wywarze' }
+    ] },
+  { id: 'ryby', label: 'Ryby', group: 'other', allergens: [4],
+    aliases: ['ryba', 'ryby', 'rybka'],
+    note: 'Ryby to też paluszki rybne, dorsz, mintaj, morszczuk, łosoś i ryba po grecku.',
+    patterns: [
+      { p: /\bryb|\bdorsz|\bmintaj|\bmirun|\bmorszczuk|\blosos|\btunczyk|\bpstrag|\bmakrel|\bsledz|\bsola\b|\btilapi|\bpanga|\bkarmazyn|\bhalibut|\bfish|\bkrewet|\bsurimi|\bsardyn|\bszprot|\bpo grecku/, why: 'ryba' },
+      { p: /\bfilecik/, unless: /kurcz|drob|indy/, maybe: true, why: 'fileciki (ryba albo kurczak)' }
+    ] },
+  { id: 'jajka', label: 'Jajka', group: 'other', allergens: [3],
+    aliases: ['jajka', 'jajko', 'jaja', 'jajek', 'jajecznica'],
+    note: 'Jajka to też kotlet jajeczny, schab po parysku i zupa z jajkiem. Jajko w cieście lub panierce pokazuje numer alergenu 3 w jadłospisie (oznaczamy wtedy obiad do sprawdzenia).',
+    patterns: [
+      { p: /\bjaj|\bomlet|\bfrittat|\bszakszuk/, why: 'jajko' },
+      { p: /\bpo parysku/, why: 'w cieście z jajkiem (po parysku)' }
+    ] },
+  { id: 'grzyby', label: 'Grzyby', group: 'other', core: true,
+    aliases: ['grzyby', 'grzyb', 'pieczarki', 'pieczarka'],
+    patterns: [
+      { p: /\bgrzyb|\bpieczar|\bborowik|\bpodgrzyb|\bboczniak|\bkurk(i|ami|ach)\b|\bkurek\b|\bshiitake|\bmaslak/, why: 'grzyby' },
+      { p: /\blesn(y|ym|e|ymi)\b|\bstrogonow|\bstrogonof/, maybe: true, why: 'zwykle z grzybami' }
+    ] },
+  { id: 'nabial', label: 'Mleko i nabiał', short: 'nabiał', group: 'other', allergens: [7],
+    aliases: ['mleko', 'nabiał', 'laktoza', 'mleczne'],
+    note: 'Nabiał to ser, twaróg (też pierogi ruskie i leniwe), jogurt, śmietana, masło i mleko. Mleko w cieście czy puree pokazuje numer alergenu 7 w jadłospisie.',
+    patterns: [
+      { p: /\bser\b|\bsera\b|\bserem\b|\bserow|\bserek|\bserk|\bsernik|\bmozz?arel|\bparmezan|\bfeta\b|\bgouda|\bcheddar|\bricott|\bmascarpon|\bpizz/, unless: /bez sera/, why: 'ser' },
+      { p: /\btwar[oa]|\bruski|\bleniw/, why: 'twaróg' },
+      { p: /\bjogurt|\bkefir|\bmaslank|\bmlek|\bmlecz|\bsmietan|\bzabiel|\bmasl(o|a|e|em|an|ow)|\bbeszamel|\bbudyn/, unless: /roslinn|sojow|kokos|owsian/, why: 'mleko, śmietana lub masło' }
+    ] },
+  { id: 'gluten', label: 'Gluten', group: 'other', allergens: [1],
+    aliases: ['gluten', 'pszenica', 'mąka', 'bezglutenowe', 'celiakia'],
+    note: 'Gluten jest w makaronie, pierogach, naleśnikach, panierce, kaszy jęczmiennej, bulgurze i kuskusie.',
+    patterns: [
+      { p: /\bmakaron|\bspaghetti|\bpenne|\bfusilli|\btagliatel|\blazank|\blasagn|\bklus|\bkopytk|\bgnocchi|\bpierog|\bnalesnik|\bracuch|\bpampuch|\bpizz|\btortill|\bburger|\bbulk|\bbulecz|\bchleb|\bgrzank|\bkruton|\bzacierk|\bw ciescie|\bciast|\bbiszkopt|\bherbatnik|\bwafl|\bkrupnik|\bjeczmien|\bbulgur|\bkuskus|\bmanna|\bpeczak|\bpaluszk|\bpszen|\bzytni/, unless: /bezglut|makaron\w* ryzow/, why: 'mąka, makaron lub kasza z glutenem' },
+      { p: /\bpanier/, unless: /kukurydz|bezglut/, why: 'panierka' },
+      { p: /\bpanier\w* kukurydz|\bkasz/, unless: /gryczan|jaglan|ryzow|jeczmien|bulgur|kuskus|manna|peczak|bezglut/, maybe: true, why: 'panierka lub kasza (rodzaj nie podany)' },
+      { p: /\bpozarsk|\bmielon|\bklops|\bpulpe|\bnug+ets|\bstrips|\bpops/, unless: /bezglut/, maybe: true, why: 'zwykle z bułką tartą' }
+    ] },
+  { id: 'seler', label: 'Seler', group: 'other', allergens: [9],
+    aliases: ['seler', 'selerowa'],
+    note: 'Seler bywa w zupach i wywarach bez podania w nazwie, wtedy pokazuje go numer alergenu 9 w jadłospisie.',
+    patterns: [
+      { p: /\bseler/, why: 'seler' }
+    ] },
+  { id: 'orzechy', label: 'Orzechy', group: 'other', allergens: [5, 8],
+    aliases: ['orzechy', 'orzeszki', 'migdały', 'orzech'],
+    patterns: [
+      { p: /\borzech|\borzesz|\bmigdal|\bnerkowc|\bpistacj|\bnutell|\bpralin|\bmarcepan|\bsatay/, why: 'orzechy' }
+    ] },
+  { id: 'soja', label: 'Soja', group: 'other', allergens: [6],
+    aliases: ['soja', 'sojowe'],
+    patterns: [
+      { p: /\bsoj|\btofu|\bedamame/, why: 'soja' }
+    ] }
+];
+const FOOD_GROUP_TITLES = { meat: 'Mięso', other: 'Inne i alergeny' };
+
+// "Każde mięso" = wszystko z reguł mięsnych (prawdopodobne też, bo i tak to mięso)
+(function buildMeatPatterns() {
+  const meat = FOOD_RULES.find(rule => rule.id === 'mieso');
+  meat.patterns = [
+    { p: /\bmies(o|a|em|ne|ny|na|nym|nymi)?\b/, unless: /wywar|rosol|bez mies/, why: 'mięso' },
+    { p: /\bkacz|\bkrolik|\bbaran|\bjagni|\bwatrob|\bpodrob|\bzoladk|\bdziczyz/, why: 'mięso' },
+    { p: /\bkotlet\b|\bkotlecik/, unless: /ryb|jajeczn|ziemniacz|warzyw|kalafior|ciecierz|soczewic|soj|ser|brokul|marchew|fasol|groch|szpinak|kasz|ryz/, maybe: true, why: 'kotlet (zwykle mięsny)' }
+  ];
+  FOOD_RULES.filter(rule => ['kurczak', 'indyk', 'wieprzowina', 'wolowina'].includes(rule.id)).forEach(rule => {
+    rule.patterns.forEach(pattern => {
+      meat.patterns.push(Object.assign({}, pattern, { maybe: !!pattern.keepMaybe, why: pattern.whyMeat || pattern.why }));
+    });
+  });
+})();
+
+// Własne słowa rodzica: odmiana (brokuły, brokułowa, brokułami) i kilka oczywistych
+// powiązań (kapusta to też kapuśniak, gołąbki i bigos)
+const FOOD_WORD_GROUPS = [
+  ['kapust', 'kapusn', 'golab', 'bigos'],
+  ['burak', 'buracz', 'botwin', 'barszcz czerw'],
+  ['ogor', 'mizeri'],
+  ['pomidor', 'napoli', 'ketchup', 'keczup'],
+  ['fasol', 'po bretonsku'],
+  ['groch', 'grosz'],
+  ['ciecierzyc', 'hummus', 'falafel'],
+  ['marchew', 'marchw', 'karotk'],
+  ['dyni'],
+  ['papryk', 'leczo'],
+  ['ziemniak', 'ziemniacz', 'pure', 'frytk', 'kopytk', 'pyz'],
+  ['makaron', 'spaghetti', 'penne', 'fusilli', 'lazank', 'lasagn', 'tagliatel', 'klusk', 'klusecz'],
+  ['kasz', 'krupnik', 'bulgur', 'kuskus', 'peczak'],
+  ['ryz', 'risott'],
+  ['jabl', 'szarlotk'],
+  ['owoc', 'jagod', 'truskaw', 'malin', 'wisn', 'borowk', 'grusz', 'sliw', 'brzoskwin', 'banan', 'mandaryn']
+];
+
+let foodAnalysis = new Map(); // "dd.mm:1" (zupa) albo "dd.mm:2" (drugie) -> { row, slot, cell, box, hits }
+
+// Bez polskich znaków i wielkich liter; gramatury w nawiasach usuwamy, inne nawiasy zostają
+function foldFoodText(text) {
+  return String(text || '').toLowerCase()
+    .replace(/ł/g, 'l')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\([^)]*\d[^)]*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Danie i dodatki osobno: "Kotlet z kurczaka, ziemniaki | surówka"
+function foodSegments(text) {
+  return foldFoodText(text).split(/\s*[,|;]\s*/).filter(Boolean);
+}
+
+// Rdzeń słowa: brokuły -> brokul, rodzynki -> rodzyn, koperek -> koper
+function foodWordStem(word) {
+  let stem = foldFoodText(word).replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim();
+  if (stem.includes(' ')) return stem;
+  const endings = ['ami', 'ach', 'owi', 'ego', 'emu', 'ymi', 'ow', 'om', 'em', 'ie', 'a', 'e', 'i', 'o', 'u', 'y'];
+  const ending = endings.find(end => stem.endsWith(end) && stem.length - end.length >= 3);
+  if (ending) {
+    stem = stem.slice(0, -ending.length);
+    if (stem.length >= 6 && stem.endsWith('k')) stem = stem.slice(0, -1);
+  } else if (stem.length >= 6 && stem.endsWith('ek')) {
+    stem = stem.slice(0, -2);
+  }
+  return stem;
+}
+
+// Wpisane słowo, które jest gotową opcją (np. "kurczaka", "pieczarki", "mięsa")
+function findFoodPreset(word) {
+  const words = foodWordStem(word).split(' ');
+  for (const stem of words) {
+    if (stem.length < 3) continue;
+    const rule = FOOD_RULES.find(candidate => [candidate.label, ...(candidate.aliases || [])].some(alias => {
+      const aliasStem = foodWordStem(alias);
+      if (aliasStem.includes(' ')) return false;
+      return aliasStem === stem || (stem.length >= 4 && aliasStem.length >= 4 && (aliasStem.startsWith(stem) || stem.startsWith(aliasStem)));
+    }));
+    if (rule) return rule;
+  }
+  return null;
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function customFoodRule(word) {
+  const label = word.trim().toLowerCase();
+  const stem = foodWordStem(word);
+  const group = stem.includes(' ') ? null : FOOD_WORD_GROUPS.find(entries => entries.some(entry => entry.startsWith(stem) || stem.startsWith(entry)));
+  const stems = [...new Set([stem, ...(group || [])])];
+  return {
+    id: 'w:' + stem,
+    label,
+    custom: true,
+    core: true,
+    patterns: stems.map(part => ({ p: new RegExp('\\b' + escapeRegExp(part)), why: label }))
+  };
+}
+
+function foodRuleShort(rule) {
+  return rule.short || rule.label.toLowerCase();
+}
+
+function loadFoodPrefs() {
+  try {
+    const data = JSON.parse(localStorage.getItem(FOOD_PREFS_KEY) || '{}') || {};
+    return {
+      rules: Array.isArray(data.rules) ? data.rules.filter(id => FOOD_RULES.some(rule => rule.id === id)) : [],
+      words: Array.isArray(data.words) ? data.words.filter(word => typeof word === 'string' && word.trim()).slice(0, 30) : []
+    };
+  } catch (e) {
+    return { rules: [], words: [] };
+  }
+}
+
+function saveFoodPrefs(prefs) {
+  try {
+    localStorage.setItem(FOOD_PREFS_KEY, JSON.stringify({ rules: prefs.rules, words: prefs.words }));
+  } catch (e) {
+    console.warn('Nie udało się zapisać listy „nie je”:', e);
+  }
+}
+
+function getActiveFoodRules(prefs = loadFoodPrefs()) {
+  const rules = FOOD_RULES.filter(rule => prefs.rules.includes(rule.id));
+  const seen = new Set();
+  prefs.words.forEach(word => {
+    const rule = customFoodRule(word);
+    if (rule.patterns.length && !seen.has(rule.id)) {
+      seen.add(rule.id);
+      rules.push(rule);
+    }
+  });
+  return rules;
+}
+
+function parseAllergenCodes(text) {
+  return [...new Set((String(text || '').match(/\d{1,2}/g) || []).map(Number).filter(code => code >= 1 && code <= 14))];
+}
+
+function describeAllergens(text) {
+  const codes = parseAllergenCodes(text);
+  return codes.length ? codes.map(code => `${code} (${ALLERGEN_NAMES[code]})`).join(', ') : String(text || '');
+}
+
+// Trafienia reguł w jednym daniu: [{ rule, level: 'tak' | 'moze', why }]
+function matchDish(rules, slot, text, extrasText) {
+  // Zupa to jedno danie ("Zupa jarzynowa, wywar warzywny"), drugie danie ma dodatki po przecinku
+  const segments = slot === 1 ? [foldFoodText(text)].filter(Boolean) : foodSegments(text);
+  const extras = foodSegments(extrasText);
+  const plantBased = PLANT_BASED_RE.test(segments.join(' '));
+  const hits = [];
+  rules.forEach(rule => {
+    if (rule.soupOnly && slot !== 1) return;
+    if (rule.meat && plantBased) return;
+    // W zupie liczy się całość; w drugim daniu reguły "core" patrzą tylko na samo danie
+    const pools = [{ texts: slot === 1 || !rule.core ? segments : segments.slice(0, 1), extra: false }];
+    if (!rule.core && !rule.soupOnly && extras.length) pools.push({ texts: extras, extra: true });
+    let best = null;
+    pools.forEach(pool => pool.texts.forEach(segment => rule.patterns.forEach(pattern => {
+      if (!pattern.p.test(segment) || (pattern.unless && pattern.unless.test(segment))) return;
+      const level = pattern.maybe || pool.extra ? 'moze' : 'tak';
+      if (!best || (best.level === 'moze' && level === 'tak')) {
+        best = { rule, level, why: pool.extra ? `w dodatkach: ${pattern.why}` : pattern.why };
+      }
+    })));
+    if (best) hits.push(best);
+  });
+  return hits;
+}
+
+function analyzeFoodMenu(rules) {
+  const result = new Map();
+  if (!rules.length) return result;
+  document.querySelectorAll('#menuTable tbody tr.has-info').forEach(row => {
+    const date = row.cells[1].textContent.trim();
+    const boxes = row.querySelectorAll('.dish-checkbox');
+    const mainCell = row.cells[5];
+    const codes = parseAllergenCodes(mainCell.dataset.alergeny);
+    const extrasText = [mainCell.dataset.dodatki, mainCell.dataset.deser].filter(Boolean).join(', ');
+    const dishes = [1, 2].map(slot => {
+      const cell = row.cells[slot === 1 ? 3 : 5];
+      const text = cell.textContent.trim();
+      const box = boxes[slot - 1];
+      if (!text || !box) return null;
+      return { key: `${date}:${slot}`, row, slot, cell, box, hits: matchDish(rules, slot, text, slot === 2 ? extrasText : '') };
+    });
+    // Numer alergenu podany dla całego obiadu: jeśli nazwa żadnego dania go nie
+    // tłumaczy, oba dania oznaczamy do sprawdzenia
+    rules.forEach(rule => {
+      const found = (rule.allergens || []).filter(code => codes.includes(code));
+      if (!found.length) return;
+      if (dishes.some(dish => dish && dish.hits.some(hit => hit.rule === rule && hit.level === 'tak'))) return;
+      const why = `alergen ${found.map(code => `${code} (${ALLERGEN_NAMES[code]})`).join(', ')} w obiedzie tego dnia`;
+      dishes.forEach(dish => {
+        if (dish && !dish.hits.some(hit => hit.rule === rule)) dish.hits.push({ rule, level: 'moze', why });
+      });
+    });
+    dishes.forEach(dish => { if (dish) result.set(dish.key, dish); });
+  });
+  return result;
+}
+
+function foodRecordKey() {
+  const monthYear = getMonthYear();
+  return monthYear ? FOOD_APPLIED_PREFIX + monthYear.replace(/\s+/g, '_') : null;
+}
+
+function loadFoodRecord(key) {
+  try {
+    const data = JSON.parse(localStorage.getItem(key) || 'null');
+    return data && data.rules && typeof data.rules === 'object' ? data : { rules: {} };
+  } catch (e) {
+    return { rules: {} };
+  }
+}
+
+function setDishChecked(dish, checked) {
+  if (dish.box.checked === checked) return;
+  dish.box.checked = checked;
+  dish.box.dispatchEvent(new Event('change'));
+}
+
+// Rozpoznaje dania w tabeli i uzgadnia zaznaczenia z listą "nie je".
+// applyNew: reguły jeszcze nieużyte w tym miesiącu odznaczają pasujące dania.
+function reconcileFoodRules(applyNew) {
+  const rules = getActiveFoodRules();
+  foodAnalysis = analyzeFoodMenu(rules);
+  const result = { unchecked: 0, rechecked: 0, names: new Set() };
+  const key = foodRecordKey();
+  if (key && document.querySelector('#menuTable tbody tr.has-info')) {
+    const record = loadFoodRecord(key);
+    const activeIds = new Set(rules.map(rule => rule.id));
+    let changed = false;
+    Object.keys(record.rules).forEach(id => {
+      if (activeIds.has(id)) return;
+      (Array.isArray(record.rules[id]) ? record.rules[id] : []).forEach(dishKey => {
+        const dish = foodAnalysis.get(dishKey) || findDishByKey(dishKey);
+        if (dish && !dish.box.checked && !(dish.hits || []).some(hit => hit.level === 'tak')) {
+          setDishChecked(dish, true);
+          result.rechecked++;
+        }
+      });
+      delete record.rules[id];
+      changed = true;
+    });
+    if (applyNew) {
+      rules.forEach(rule => {
+        if (record.rules[rule.id]) return;
+        const keys = [];
+        foodAnalysis.forEach((dish, dishKey) => {
+          if (!dish.box.checked || !dish.hits.some(hit => hit.rule.id === rule.id && hit.level === 'tak')) return;
+          setDishChecked(dish, false);
+          keys.push(dishKey);
+          result.unchecked++;
+          result.names.add(foodRuleShort(rule));
+        });
+        record.rules[rule.id] = keys;
+        changed = true;
+      });
+    }
+    if (changed) {
+      try {
+        localStorage.setItem(key, JSON.stringify(record));
+      } catch (e) {
+        console.warn('Nie udało się zapisać odznaczeń z listy „nie je”:', e);
+      }
+    }
+  }
+  renderFoodMarks();
+  renderFoodBar();
+  return result;
+}
+
+// Danie bez trafień (np. po wyłączeniu ostatniej reguły nie ma go w foodAnalysis)
+function findDishByKey(dishKey) {
+  const [date, slot] = dishKey.split(':');
+  const row = [...document.querySelectorAll('#menuTable tbody tr.has-info')].find(tr => tr.cells[1].textContent.trim() === date);
+  const box = row ? row.querySelectorAll('.dish-checkbox')[Number(slot) - 1] : null;
+  return box ? { box, hits: [] } : null;
+}
+
+function describeFoodChange(result) {
+  const parts = [];
+  if (result.unchecked) {
+    parts.push(`Odznaczono ${result.unchecked} ${polishPlural(result.unchecked, 'danie', 'dania', 'dań')}, których dziecko nie je (${[...result.names].join(', ')})`);
+  }
+  if (result.rechecked) {
+    parts.push(`Zaznaczono z powrotem ${result.rechecked} ${polishPlural(result.rechecked, 'danie', 'dania', 'dań')}`);
+  }
+  return parts.join('. ');
+}
+
+function renderFoodMarks() {
+  document.querySelectorAll('#menuTable td.dish-name[data-food]').forEach(cell => {
+    delete cell.dataset.food;
+    delete cell.dataset.foodLabel;
+  });
+  foodAnalysis.forEach(dish => {
+    if (!dish.hits.length) return;
+    const sure = dish.hits.filter(hit => hit.level === 'tak');
+    const shown = sure.length ? sure : dish.hits;
+    dish.cell.dataset.food = sure.length ? 'tak' : 'moze';
+    dish.cell.dataset.foodLabel = (sure.length ? 'nie je: ' : 'sprawdź: ') + [...new Set(shown.map(hit => foodRuleShort(hit.rule)))].join(', ');
+  });
+  refreshDishTooltips();
+}
+
+function foodHitsForCell(cell) {
+  const row = cell.closest('tr');
+  if (!row || !row.cells[1]) return [];
+  const slot = cell.classList.contains('cell-first-dish') ? 1 : 2;
+  const dish = foodAnalysis.get(`${row.cells[1].textContent.trim()}:${slot}`);
+  return dish && dish.cell === cell ? dish.hits : [];
+}
+
+// Liczby do paska nad tabelą i do okna "Czego dziecko nie je?"
+function countFoodDishes() {
+  const key = foodRecordKey();
+  const record = key ? loadFoodRecord(key) : { rules: {} };
+  const counts = { off: 0, check: 0, pending: 0 };
+  foodAnalysis.forEach(dish => {
+    const sure = dish.hits.filter(hit => hit.level === 'tak');
+    if (sure.length && !dish.box.checked) counts.off++;
+    if (!sure.length && dish.hits.length && dish.box.checked) counts.check++;
+    if (dish.box.checked && sure.some(hit => !record.rules[hit.rule.id])) counts.pending++;
+  });
+  return counts;
+}
+
+function describeFoodCounts(counts) {
+  const parts = [];
+  if (counts.off) parts.push(`Odznaczone: ${counts.off} ${polishPlural(counts.off, 'danie', 'dania', 'dań')}.`);
+  if (counts.check) parts.push(`Do sprawdzenia: ${counts.check} (oznaczone „sprawdź”).`);
+  if (counts.pending) parts.push(`Jeszcze zaznaczone: ${counts.pending} ${polishPlural(counts.pending, 'danie', 'dania', 'dań')}.`);
+  if (!parts.length) parts.push('W tym jadłospisie nie ma takich dań.');
+  return parts.join(' ');
+}
+
+function renderFoodBar() {
+  const bar = document.getElementById('foodBar');
+  const button = document.getElementById('foodPrefsBtn');
+  const note = document.getElementById('foodNote');
+  if (!bar || !button || !note) return;
+  bar.classList.toggle('d-none', !document.querySelector('#menuTable tbody tr.has-info'));
+  const rules = getActiveFoodRules();
+  if (!rules.length) {
+    button.textContent = 'Czego dziecko nie je?';
+    button.classList.remove('is-set');
+    note.classList.add('d-none');
+    note.textContent = '';
+    return;
+  }
+  button.textContent = `Nie je: ${rules.map(foodRuleShort).join(', ')}`;
+  button.classList.add('is-set');
+  const counts = countFoodDishes();
+  note.innerHTML = escapeHtml(describeFoodCounts(counts)) + (counts.pending
+    ? ` <button type="button" class="btn btn-soft btn-sm" data-food-action="apply">Odznacz ${counts.pending === 1 ? 'je' : 'je wszystkie'}</button>`
+    : '');
+  note.classList.remove('d-none');
+}
+
+function applyPendingFoodRules() {
+  const result = reconcileFoodRules(true);
+  if (result.unchecked) showSimpleToast(describeFoodChange(result), 'success');
+}
+
+function updateFoodPrefs(prefs, note) {
+  saveFoodPrefs(prefs);
+  const result = reconcileFoodRules(true);
+  const message = [note, describeFoodChange(result)].filter(Boolean).join('. ');
+  if (document.getElementById('foodPrefs')) openFoodPrefsDialog(message);
+  else if (message) showSimpleToast(message, 'success');
+}
+
+function addFoodWords(text) {
+  const prefs = loadFoodPrefs();
+  const turnedOn = [];
+  String(text || '').split(/[,;\n]+/).map(word => word.trim().replace(/\s+/g, ' ').slice(0, 40)).forEach(word => {
+    if (foodWordStem(word).replace(/ /g, '').length < 3) return;
+    const preset = findFoodPreset(word);
+    if (preset) {
+      if (!prefs.rules.includes(preset.id)) prefs.rules.push(preset.id);
+      turnedOn.push(preset.label);
+    } else if (!prefs.words.some(existing => foodWordStem(existing) === foodWordStem(word)) && prefs.words.length < 30) {
+      prefs.words.push(word);
+    }
+  });
+  updateFoodPrefs(prefs, turnedOn.length ? `Włączono gotową opcję: ${turnedOn.join(', ')}` : '');
+}
+
+function openFoodPrefsDialog(message) {
+  const prefs = loadFoodPrefs();
+  const chips = group => FOOD_RULES.filter(rule => rule.group === group).map(rule => {
+    const on = prefs.rules.includes(rule.id);
+    return `<button type="button" class="food-chip ${on ? 'is-on' : ''}" data-action="rule:${rule.id}" aria-pressed="${on}">${escapeHtml(rule.label)}</button>`;
+  }).join('');
+  const words = prefs.words.map((word, index) =>
+    `<button type="button" class="food-chip is-on is-word" data-action="word:${index}" aria-label="Usuń: ${escapeHtml(word)}">${escapeHtml(word)} <span aria-hidden="true">✕</span></button>`
+  ).join('');
+  const notes = FOOD_RULES.filter(rule => rule.note && prefs.rules.includes(rule.id)).map(rule => `<li>${escapeHtml(rule.note)}</li>`).join('');
+  const hasMenu = !!document.querySelector('#menuTable tbody tr.has-info');
+  const summary = hasMenu && (prefs.rules.length || prefs.words.length) ? describeFoodCounts(countFoodDishes()) : '';
+  const html = `
+    <div class="app-dialog-head">
+      <h3 class="app-dialog-title">Czego dziecko nie je?</h3>
+      <button type="button" class="btn btn-primary btn-sm" data-action="close">Gotowe</button>
+    </div>
+    <p class="food-intro">Takie dania odznaczymy w każdym nowym jadłospisie. Rozpoznajemy je po nazwie, np. filet z piersi i nuggetsy to kurczak, a pierogi ruskie mają twaróg.</p>
+    ${Object.entries(FOOD_GROUP_TITLES).map(([group, title]) => `
+      <h4 class="food-group-title">${title}</h4>
+      <div class="food-chips">${chips(group)}</div>`).join('')}
+    <h4 class="food-group-title">Coś jeszcze?</h4>
+    <form class="food-word-form" novalidate>
+      <input type="text" class="form-control" id="foodWordInput" maxlength="80" placeholder="np. brokuły, cebula, rodzynki" autocomplete="off" aria-label="Czego jeszcze dziecko nie je">
+      <button type="submit" class="btn btn-soft">Dodaj</button>
+    </form>
+    ${words ? `<div class="food-chips">${words}</div>` : ''}
+    ${message ? `<p class="food-message" role="status">${escapeHtml(message)}</p>` : ''}
+    ${summary ? `<p class="food-summary"><strong>W tym jadłospisie:</strong> ${escapeHtml(summary)}</p>` : ''}
+    ${notes ? `<ul class="food-notes">${notes}</ul>` : ''}
+    <p class="food-disclaimer">To pomoc, a nie gwarancja: rozpoznajemy dania po nazwach i numerach alergenów z jadłospisu. Przy alergii zawsze sprawdź jadłospis i zapytaj w szkole.</p>`;
+  const inputHadFocus = document.activeElement && document.activeElement.id === 'foodWordInput';
+  const dialog = openAppDialog('foodPrefs', html, action => {
+    const current = loadFoodPrefs();
+    if (action.startsWith('rule:')) {
+      const id = action.slice(5);
+      current.rules = current.rules.includes(id) ? current.rules.filter(ruleId => ruleId !== id) : [...current.rules, id];
+    } else if (action.startsWith('word:')) {
+      current.words.splice(Number(action.slice(5)), 1);
+    } else {
+      return false;
+    }
+    updateFoodPrefs(current);
+    return true;
+  }, { sheet: true, label: 'Czego dziecko nie je' });
+  const input = dialog.querySelector('#foodWordInput');
+  dialog.querySelector('.food-word-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const value = input.value;
+    input.value = '';
+    addFoodWords(value);
+  });
+  if (inputHadFocus) document.getElementById('foodWordInput')?.focus();
+}
+
+function initFoodPrefs() {
+  document.getElementById('foodPrefsBtn')?.addEventListener('click', () => openFoodPrefsDialog());
+  document.getElementById('foodNote')?.addEventListener('click', event => {
+    if (event.target.closest('[data-food-action="apply"]')) applyPendingFoodRules();
+  });
+  // Liczby na pasku zmieniają się razem z zaznaczeniami
+  document.getElementById('menuTable')?.addEventListener('change', event => {
+    if (event.target.classList && event.target.classList.contains('dish-checkbox') && foodAnalysis.size) renderFoodBar();
+  }, true);
+}
+
+// ============================================
+// CZĘŚĆ 19: PRZYPOMNIENIA W KALENDARZU
+// ============================================
+// Terminy z deklaracji: wpłata gotówką w sekretariacie do 10. dnia miesiąca, deklaracja
+// na kolejny miesiąc do ostatniego dnia miesiąca. Wydarzenie z przypomnieniem trafia
+// do Kalendarza Google (link) albo do kalendarza w telefonie (plik z calendar.php).
+
+const PAYMENT_DUE_DAY = 10;
+const SCHOOL_EMAIL = 'agnieszkakupczyk@katolik.info.pl';
+
+function pad2(number) {
+  return String(number).padStart(2, '0');
+}
+
+function formatDayMonth(date) {
+  return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}`;
+}
+
+function appBaseUrl() {
+  return location.origin + location.pathname.replace(/[^/]*$/, '');
+}
+
+function reminderStamp(date) {
+  return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}${pad2(date.getHours())}${pad2(date.getMinutes())}`;
+}
+
+function dateStamp(date) {
+  return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`;
+}
+
+function formatReminderTime(date) {
+  return `${WEEKDAY_FULL[date.getDay()].toLowerCase()} ${formatDayMonth(date)}, godz. ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+// Wydarzenia dla deklaracji na dany miesiąc (tylko te, które są jeszcze przed nami)
+function getReminderPlan(period, total, now = new Date()) {
+  const plan = [];
+  const monthName = DECLARATION_MONTHS[period.month].toLowerCase();
+
+  // Wpłata: sekretariat w weekend jest zamknięty, więc wtedy najpóźniej w piątek
+  const due = new Date(period.year, period.month - 1, PAYMENT_DUE_DAY);
+  const payDay = new Date(due);
+  while (payDay.getDay() === 0 || payDay.getDay() === 6) payDay.setDate(payDay.getDate() - 1);
+  let payAt = new Date(payDay.getFullYear(), payDay.getMonth(), payDay.getDate() - 3, 19, 0);
+  if (payAt <= now) payAt = new Date(payDay.getFullYear(), payDay.getMonth(), payDay.getDate(), 7, 0);
+  if (Number(total) > 0 && payAt > now) {
+    const moved = payDay.getDate() !== PAYMENT_DUE_DAY;
+    plan.push({
+      type: 'wplata',
+      at: payAt,
+      deadline: payDay,
+      heading: `Wpłata ${formatMoney(total)} za ${monthName}`,
+      title: `Obiady: wpłata ${formatMoney(total)} za ${monthName}`,
+      when: `Termin: ${WEEKDAY_FULL[payDay.getDay()].toLowerCase()} ${formatDayMonth(payDay)}, gotówką w sekretariacie`,
+      details: [
+        `Obiady na ${monthName} ${period.year}: ${formatMoney(total)}, gotówką w sekretariacie szkoły.`,
+        `Wpłaty są przyjmowane tylko do ${PAYMENT_DUE_DAY}. dnia miesiąca.` +
+          (moved ? ` ${formatDayMonth(due)} wypada w weekend, więc najpóźniej w piątek ${formatDayMonth(payDay)}.` : ''),
+        appBaseUrl()
+      ].join('\n')
+    });
+  }
+
+  // Deklaracja na kolejny miesiąc (bez lipca i sierpnia)
+  const nextMonth = period.month === 12 ? 1 : period.month + 1;
+  if (nextMonth !== 7 && nextMonth !== 8) {
+    const deadline = new Date(period.year, period.month, 0);
+    let at = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate() - 2, 18, 0);
+    if (at <= now) at = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate(), 12, 0);
+    if (at > now) {
+      const nextName = DECLARATION_MONTHS[nextMonth].toLowerCase();
+      plan.push({
+        type: 'deklaracja',
+        at,
+        deadline,
+        heading: `Deklaracja na ${nextName}`,
+        title: `Obiady: deklaracja na ${nextName} (termin ${formatDayMonth(deadline)})`,
+        when: `Termin: ${WEEKDAY_FULL[deadline.getDay()].toLowerCase()} ${formatDayMonth(deadline)}, e-mailem do szkoły`,
+        details: [
+          `Deklaracje na kolejny miesiąc składa się do ostatniego dnia miesiąca, e-mailem na adres ${SCHOOL_EMAIL}.`,
+          `Jadłospis i gotowa deklaracja: ${appBaseUrl()}`
+        ].join('\n')
+      });
+    }
+  }
+  return plan;
+}
+
+function googleCalendarUrl(event) {
+  const format = date => `${dateStamp(date)}T${pad2(date.getHours())}${pad2(date.getMinutes())}00`;
+  const end = new Date(event.at.getTime() + 15 * 60000);
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: event.title,
+    dates: `${format(event.at)}/${format(end)}`,
+    details: event.details,
+    ctz: 'Europe/Warsaw'
+  });
+  return `https://calendar.google.com/calendar/render?${params}`;
+}
+
+function reminderIcsUrl(period, total, plan) {
+  const params = new URLSearchParams({ m: period.month, r: period.year });
+  const payment = plan.find(event => event.type === 'wplata');
+  const declaration = plan.find(event => event.type === 'deklaracja');
+  if (payment) {
+    params.set('kwota', Number(total).toFixed(2));
+    params.set('w', reminderStamp(payment.at));
+    params.set('wt', dateStamp(payment.deadline));
+  }
+  if (declaration) {
+    params.set('d', reminderStamp(declaration.at));
+    params.set('dt', dateStamp(declaration.deadline));
+  }
+  return `calendar.php?${params}`;
+}
+
+function isAppleMobile() {
+  const ua = navigator.userAgent;
+  return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+
+function openReminderDialog(period, total) {
+  const plan = getReminderPlan(period, total);
+  if (!plan.length) {
+    showSimpleToast('Terminy tej deklaracji już minęły', 'info');
+    return;
+  }
+  const apple = isAppleMobile();
+  const items = plan.map(event => `
+    <li class="reminder-item">
+      <div>
+        <strong>${escapeHtml(event.heading)}</strong>
+        <small>${escapeHtml(event.when)}</small>
+        <small>Przypomnienie: ${escapeHtml(formatReminderTime(event.at))}</small>
+      </div>
+      <a class="btn btn-soft btn-sm" href="${escapeHtml(googleCalendarUrl(event))}" target="_blank" rel="noopener">Kalendarz Google</a>
+    </li>`).join('');
+  const html = `
+    <div class="app-dialog-head">
+      <h3 class="app-dialog-title">Przypomnienia w kalendarzu</h3>
+      <button type="button" class="btn btn-soft btn-sm" data-action="close">Zamknij</button>
+    </div>
+    <p class="reminder-intro">Terminy z deklaracji: wpłata do ${PAYMENT_DUE_DAY}. dnia miesiąca, deklaracja na kolejny miesiąc do końca miesiąca.</p>
+    <ul class="reminder-list">${items}</ul>
+    <div class="app-dialog-actions">
+      <a class="btn btn-primary" id="reminderIcsLink" href="${escapeHtml(reminderIcsUrl(period, total, plan))}">${apple ? 'Dodaj do Kalendarza w iPhonie' : `Dodaj ${plan.length > 1 ? 'oba' : ''} do kalendarza (plik .ics)`}</a>
+    </div>
+    <p class="reminder-note">${apple
+      ? 'iPhone pokaże wydarzenia i zapyta o dodanie ich do Kalendarza.'
+      : 'Plik otworzy Outlook, Kalendarz Apple i większość kalendarzy. Na Androidzie najprościej użyć przycisku Kalendarz Google.'}</p>`;
+  openAppDialog('reminders', html, () => false, { sheet: true, label: 'Przypomnienia w kalendarzu' });
+}
+
+function initReminders() {
+  document.getElementById('reminderBtn')?.addEventListener('click', () => {
+    flushDeclarationRefresh();
+    const snapshot = buildDeclarationSnapshot();
+    if (snapshot) openReminderDialog(snapshot.period, snapshot.total);
+  });
+}
+
+// ============================================
+// CZĘŚĆ 20: STRONA JAK APLIKACJA NA TELEFONIE
+// ============================================
+// manifest.webmanifest i ikony pozwalają dodać stronę do ekranu telefonu, a sw.js
+// pokazuje ostatnio wczytaną wersję także bez internetu. Na iPhonie aplikacja
+// z ekranu początkowego ma osobną pamięć, więc przy pierwszym uruchomieniu bez
+// danych proponujemy wczytanie kopii zapisanej w Safari.
+
+const APP_FIRST_RUN_KEY = 'obiady_app_first_run_done';
+let installPromptEvent = null;
+
+function isStandaloneApp() {
+  return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+}
+
+function updateInstallButtons() {
+  const visible = !isStandaloneApp() && (!!installPromptEvent || isAppleMobile());
+  document.querySelectorAll('[data-install-app]').forEach(button => button.classList.toggle('d-none', !visible));
+}
+
+async function installApp() {
+  if (installPromptEvent) {
+    const promptEvent = installPromptEvent;
+    installPromptEvent = null;
+    promptEvent.prompt();
+    try {
+      await promptEvent.userChoice;
+    } catch (e) {
+      // przeglądarka sama pokazuje wynik
+    }
+    updateInstallButtons();
+    return;
+  }
+  const hasData = Object.keys(localStorage).some(key => isBackupKey(key));
+  const html = `
+    <div class="app-dialog-head">
+      <h3 class="app-dialog-title">Dodaj do ekranu telefonu</h3>
+      <button type="button" class="btn btn-soft btn-sm" data-action="close">Zamknij</button>
+    </div>
+    <ol class="install-steps">
+      <li>Stuknij przycisk <strong>Udostępnij</strong> (kwadrat ze strzałką w górę).</li>
+      <li>Wybierz <strong>Do ekranu początkowego</strong>.</li>
+      <li>Stuknij <strong>Dodaj</strong>. Ikona Obiady pojawi się obok innych aplikacji.</li>
+    </ol>
+    ${hasData ? `<p class="install-note">Aplikacja z ekranu początkowego może nie widzieć danych zapisanych w Safari. Zapisz kopię danych teraz, a po otwarciu aplikacji wczytaj ją (przycisk na dole strony).</p>
+    <div class="app-dialog-actions"><button type="button" class="btn btn-primary" data-action="export">Zapisz kopię danych</button></div>` : ''}`;
+  openAppDialog('installApp', html, action => {
+    if (action === 'export') exportLocalData();
+    return true;
+  }, { sheet: true, label: 'Dodaj stronę do ekranu telefonu' });
+}
+
+// Pierwsze uruchomienie z ekranu iPhone'a bez żadnych danych: propozycja wczytania kopii
+function offerBackupInNewApp() {
+  if (!isStandaloneApp() || !isAppleMobile()) return;
+  try {
+    if (localStorage.getItem(APP_FIRST_RUN_KEY)) return;
+    localStorage.setItem(APP_FIRST_RUN_KEY, '1');
+  } catch (e) {
+    return;
+  }
+  if (Object.keys(localStorage).some(key => isBackupKey(key))) return;
+  const html = `
+    <h3 class="app-dialog-title">Witaj w aplikacji Obiady</h3>
+    <p>Masz kopię danych zapisaną wcześniej w Safari? Wczytaj ją, a wróci lista „Moje deklaracje”, dane dziecka i zaznaczenia.</p>
+    <div class="app-dialog-actions">
+      <button type="button" class="btn btn-primary" data-action="import">Wczytaj kopię</button>
+      <button type="button" class="btn btn-soft" data-action="close">Zaczynam od nowa</button>
+    </div>`;
+  openAppDialog('appFirstRun', html, action => {
+    if (action === 'import') document.getElementById('importDataInput')?.click();
+    return false;
+  }, { label: 'Pierwsze uruchomienie aplikacji' });
+}
+
+function initInstallApp() {
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(error => {
+      console.warn('Tryb bez internetu niedostępny:', error);
+    });
+  }
+  // Dane w przeglądarce mają nie znikać przy porządkach w pamięci telefonu
+  if (navigator.storage && navigator.storage.persist && isStandaloneApp()) {
+    navigator.storage.persist().catch(() => {});
+  }
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    installPromptEvent = event;
+    updateInstallButtons();
+  });
+  window.addEventListener('appinstalled', () => {
+    installPromptEvent = null;
+    updateInstallButtons();
+    showSimpleToast('Gotowe: Obiady są na ekranie telefonu', 'success');
+  });
+  document.querySelectorAll('[data-install-app]').forEach(button => button.addEventListener('click', installApp));
+  updateInstallButtons();
+  offerBackupInNewApp();
+}
+
+function initExtraFeatures() {
+  initFoodPrefs();
+  initReminders();
+  initInstallApp();
+}
+
+// ============================================
 // INICJALIZACJA - Czeka na załadowanie DOM
 // ============================================
 
@@ -4346,6 +5344,7 @@ if (document.readyState === 'loading') {
     loadSavedData(); // DODAJ TĘ LINIĘ
     initDeclarationArchive();
     initComfortFeatures();
+    initExtraFeatures();
     attachFormListeners(); // DODAJ TĘ LINIĘ
     console.log('✅ Aplikacja gotowa!');
   });
@@ -4355,6 +5354,7 @@ if (document.readyState === 'loading') {
   loadSavedData(); // DODAJ TĘ LINIĘ
   initDeclarationArchive();
   initComfortFeatures();
+  initExtraFeatures();
   attachFormListeners(); // DODAJ TĘ LINIĘ
   console.log('✅ Aplikacja gotowa!');
 }

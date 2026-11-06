@@ -6,6 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1f9d63">
   <title>Generator deklaracji obiadowej z Katolika</title>
+  <!-- Dodanie do ekranu telefonu (CZĘŚĆ 20 w script.js, sw.js) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Obiady">
   <!-- Favicons -->
   <link rel="icon" href="https://katolik.info.pl/wp-content/uploads/2021/03/fav16.gif" type="image/gif" sizes="16x16">
   <link rel="icon" href="https://katolik.info.pl/wp-content/uploads/2021/03/fav32.gif" type="image/gif" sizes="32x32">
@@ -15,7 +21,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css">
-  <link rel="stylesheet" href="styles.css?v=2418653e02">
+  <link rel="stylesheet" href="styles.css?v=2f99a22f18">
 </head>
 
 <body>
@@ -144,6 +150,8 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
     <symbol id="i-archive" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/><path d="M12 6v6"/><path d="m9 9 3 3 3-3"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
     <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
   </svg>
 
@@ -158,6 +166,9 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
         </span>
       </a>
       <div class="app-bar-actions">
+        <button class="icon-btn install-btn d-none" data-install-app title="Dodaj do ekranu telefonu" aria-label="Dodaj do ekranu telefonu">
+          <svg class="icon"><use href="#i-phone"/></svg>
+        </button>
         <button class="icon-btn" id="devMenuToggle" title="Narzędzia deweloperskie" aria-label="Narzędzia deweloperskie">
           <svg class="icon"><use href="#i-sliders"/></svg>
         </button>
@@ -281,6 +292,11 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
             <button type="button" class="weekday-chip" data-wd="4" title="Zaznacz albo odznacz obiady we wszystkie czwartki">Czw</button>
             <button type="button" class="weekday-chip" data-wd="5" title="Zaznacz albo odznacz obiady we wszystkie piątki">Pt</button>
           </div>
+        </div>
+        <!-- Czego dziecko nie je (CZĘŚĆ 18 w script.js) -->
+        <div id="foodBar" class="food-bar d-none">
+          <button type="button" id="foodPrefsBtn" class="food-prefs-btn">Czego dziecko nie je?</button>
+          <p id="foodNote" class="food-note d-none" aria-live="polite"></p>
         </div>
 
         <div class="menu-table-wrap">
@@ -408,8 +424,8 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
           <h2 class="panel-title">Jak to działa?</h2>
           <ol class="tips-list">
             <li>Otwórz jadłospis wczytany już przez innego rodzica albo wgraj plik (Word, PDF, zdjęcie). Dni i dania wczytają się same.</li>
-            <li>Odznacz dania, których dziecko nie będzie jeść (cały dzień tygodnia, np. piątki, jednym przyciskiem). Koszt policzy się automatycznie.</li>
-            <li>Wygeneruj deklarację i wyślij ją e-mailem albo zapisz jako PDF.</li>
+            <li>Odznacz dania, których dziecko nie będzie jeść (cały dzień tygodnia, np. piątki, jednym przyciskiem). Wpisz raz, czego dziecko nie je, a takie dania odznaczą się same w każdym miesiącu. Koszt policzy się automatycznie.</li>
+            <li>Wygeneruj deklarację i wyślij ją e-mailem albo zapisz jako PDF. Termin wpłaty i kolejnej deklaracji możesz dodać do kalendarza w telefonie.</li>
           </ol>
         </section>
       </aside>
@@ -449,6 +465,11 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
               <span><strong>Generuj PDF</strong><small>Z podpisem lub bez</small></span>
             </button>
           </div>
+          <!-- Przypomnienia o wpłacie i kolejnej deklaracji (CZĘŚĆ 19 w script.js) -->
+          <button type="button" id="reminderBtn" class="reminder-btn">
+            <svg class="icon"><use href="#i-calendar"/></svg>
+            <span><strong>Przypomnij mi o wpłacie i kolejnej deklaracji</strong><small>Wydarzenie w Kalendarzu Google albo w telefonie</small></span>
+          </button>
         </div>
 
         <!-- SEKCJA EMAIL -->
@@ -544,6 +565,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
         <button type="button" class="btn btn-soft btn-sm" id="exportDataBtn"><svg class="icon"><use href="#i-download"/></svg>Zapisz kopię danych</button>
         <label class="btn btn-soft btn-sm" for="importDataInput"><svg class="icon"><use href="#i-upload"/></svg>Wczytaj kopię</label>
         <input type="file" id="importDataInput" class="visually-hidden" accept=".json,application/json">
+        <button type="button" class="btn btn-soft btn-sm d-none" data-install-app><svg class="icon"><use href="#i-phone"/></svg>Dodaj do ekranu telefonu</button>
       </div>
     </footer>
   </main>
@@ -561,7 +583,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
 
   <!-- jsPDF, html2canvas, fonts.js i Tippy ładują się dopiero wtedy,
        gdy są potrzebne (patrz loadScriptOnce w script.js) -->
-  <script src="script.js?v=de9edbb6bb" onerror="console.error('❌ BŁĄD: script.js nie załadował się!')"></script>
+  <script src="script.js?v=50b09ed41d" onerror="console.error('❌ BŁĄD: script.js nie załadował się!')"></script>
 </body>
 
 </html>

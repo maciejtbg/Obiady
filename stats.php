@@ -197,6 +197,41 @@ if ($entered !== $password) {
 </div>
         
         <div class="card">
+            <h2>🐞 Błędy na stronie (ostatnie 30 dni)</h2>
+            <p style="color: #666; font-size: 13px;">Zgłaszane automatycznie z przeglądarek rodziców (log_error.php). Bez danych dzieci i adresów IP.</p>
+            <?php
+            $errorsTable = $conn->query("SHOW TABLES LIKE 'js_errors'");
+            if (!$errorsTable || $errorsTable->num_rows === 0) {
+                echo '<p>Na razie żadnych zgłoszeń.</p>';
+            } else {
+                $errors = $conn->query("SELECT kind, message, source, line, col, stack, version, browser, os, device, occurrences, first_seen, last_seen
+                    FROM js_errors WHERE last_seen >= DATE_SUB(NOW(), INTERVAL 30 DAY) ORDER BY last_seen DESC LIMIT 50");
+                if ($errors->num_rows === 0) {
+                    echo '<p>W ostatnich 30 dniach żadnych zgłoszeń.</p>';
+                } else {
+                    $kindLabels = ['blad' => 'błąd', 'promise' => 'błąd (async)', 'obsluzony' => 'złapany w kodzie', 'komunikat' => 'komunikat dla rodzica'];
+                    echo '<table><tr><th>Ostatnio</th><th>Ile razy</th><th>Rodzaj</th><th>Opis</th><th>Miejsce</th><th>Urządzenie</th><th>Wersja</th></tr>';
+                    while ($row = $errors->fetch_assoc()) {
+                        $place = $row['source'] !== '' ? $row['source'] . ':' . $row['line'] . ':' . $row['col'] : '';
+                        echo '<tr>'
+                            . '<td>' . htmlspecialchars($row['last_seen']) . '<br><small>od ' . htmlspecialchars($row['first_seen']) . '</small></td>'
+                            . '<td>' . (int)$row['occurrences'] . '</td>'
+                            . '<td>' . htmlspecialchars($kindLabels[$row['kind']] ?? $row['kind']) . '</td>'
+                            . '<td>' . htmlspecialchars($row['message'])
+                            . ($row['stack'] ? '<details><summary>szczegóły</summary><pre style="white-space: pre-wrap; font-size: 11px;">' . htmlspecialchars($row['stack']) . '</pre></details>' : '')
+                            . '</td>'
+                            . '<td>' . htmlspecialchars($place) . '</td>'
+                            . '<td>' . htmlspecialchars($row['browser'] . ', ' . $row['os'] . ', ' . $row['device']) . '</td>'
+                            . '<td>' . htmlspecialchars($row['version']) . '</td>'
+                            . '</tr>';
+                    }
+                    echo '</table>';
+                }
+            }
+            ?>
+        </div>
+
+        <div class="card">
             <p style="color: #666; font-size: 12px;">
                 ℹ️ Adresy IP są anonimizowane (ostatni oktet zastąpiony zerem) zgodnie z RODO.<br>
                 Logi starsze niż 90 dni powinny być automatycznie usuwane.

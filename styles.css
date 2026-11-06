@@ -926,7 +926,8 @@ body.dark-theme .icon-moon {
 /* Wskazówka, że po najechaniu dymek pokaże też deser i/lub alergeny
    (dane te nie wchodzą w textContent, więc nie wpływają na eksport) */
 .dish-name[data-alergeny]::after,
-.dish-name[data-deser]::after {
+.dish-name[data-deser]::after,
+.dish-name[data-dodatki]::after {
   content: " ⓘ";
   font-size: 0.75em;
   color: var(--primary);
@@ -1147,7 +1148,8 @@ body.dark-theme .icon-moon {
   /* Kółko z ptaszkiem po prawej (zamiast ⓘ, dymków i tak nie ma na telefonie) */
   .menu-table td.dish-name::after,
   .menu-table td.dish-name[data-alergeny]::after,
-  .menu-table td.dish-name[data-deser]::after {
+  .menu-table td.dish-name[data-deser]::after,
+  .menu-table td.dish-name[data-dodatki]::after {
     content: "";
     position: absolute;
     top: 50%;
@@ -1168,7 +1170,8 @@ body.dark-theme .icon-moon {
 
   .menu-table td.dish-name.selected::after,
   .menu-table td.dish-name.selected[data-alergeny]::after,
-  .menu-table td.dish-name.selected[data-deser]::after {
+  .menu-table td.dish-name.selected[data-deser]::after,
+  .menu-table td.dish-name.selected[data-dodatki]::after {
     border-color: var(--primary);
     background: var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 14px no-repeat;
   }
@@ -2401,6 +2404,295 @@ body.dark-theme .app-toast {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Czego dziecko nie je (CZĘŚĆ 18 w script.js) */
+:root {
+  --food-no: #c2410c;
+  --food-no-soft: #ffedd5;
+  --food-maybe: #92400e;
+  --food-maybe-soft: #fef3c7;
+}
+
+body.dark-theme {
+  --food-no: #fb923c;
+  --food-no-soft: rgba(251, 146, 60, 0.16);
+  --food-maybe: #fbbf24;
+  --food-maybe-soft: rgba(251, 191, 36, 0.14);
+}
+
+.food-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: -6px 0 16px;
+}
+
+.food-prefs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.food-prefs-btn::before {
+  content: "🚫";
+  font-size: 0.9em;
+}
+
+.food-prefs-btn.is-set {
+  border-style: solid;
+  border-color: var(--food-no);
+  background: var(--food-no-soft);
+  color: var(--food-no);
+}
+
+.food-prefs-btn:focus-visible,
+.food-chip:focus-visible {
+  outline: 3px solid var(--primary-ring);
+  outline-offset: 2px;
+}
+
+.food-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.food-note .btn {
+  margin-left: 4px;
+  padding: 2px 10px;
+}
+
+/* Oznaczenie dania w tabeli (bez zmiany tekstu komórki, który trafia do deklaracji) */
+.menu-table td.dish-name[data-food-label]::before {
+  content: attr(data-food-label);
+  display: block;
+  width: fit-content;
+  margin-bottom: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--food-no-soft);
+  color: var(--food-no);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.menu-table td.dish-name[data-food="moze"]::before {
+  background: var(--food-maybe-soft);
+  color: var(--food-maybe);
+}
+
+@media (max-width: 768px) {
+  .menu-table td.cell-first-dish[data-food-label]::before {
+    content: "Zupa · " attr(data-food-label);
+  }
+
+  .menu-table td.cell-second-dish[data-food-label]::before {
+    content: "Drugie danie · " attr(data-food-label);
+  }
+}
+
+/* Okno "Czego dziecko nie je?" */
+.food-intro,
+.food-disclaimer,
+.reminder-intro,
+.reminder-note,
+.install-note {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.food-group-title {
+  margin: 16px 0 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.food-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.food-chips + .food-chips {
+  margin-top: 10px;
+}
+
+.food-chip {
+  min-height: 38px;
+  padding: 6px 14px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.food-chip.is-on {
+  border-color: var(--food-no);
+  background: var(--food-no-soft);
+  color: var(--food-no);
+}
+
+.food-chip.is-on:not(.is-word)::before {
+  content: "✓ ";
+}
+
+.food-word-form {
+  display: flex;
+  gap: 8px;
+}
+
+.food-word-form .form-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.food-word-form + .food-chips {
+  margin-top: 10px;
+}
+
+.food-message,
+.food-summary {
+  margin: 14px 0 0;
+  font-size: 0.9rem;
+}
+
+.food-message {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-weight: 650;
+}
+
+.food-notes {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.food-disclaimer {
+  margin: 14px 0 0;
+  font-size: 0.8rem;
+}
+
+/* Przypomnienia w kalendarzu (CZĘŚĆ 19) */
+.reminder-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.reminder-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.reminder-btn .icon {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.reminder-btn strong,
+.reminder-btn small {
+  display: block;
+}
+
+.reminder-btn strong {
+  font-size: 0.92rem;
+}
+
+.reminder-btn small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.reminder-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reminder-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.reminder-item + .reminder-item {
+  margin-top: 8px;
+}
+
+.reminder-item strong,
+.reminder-item small {
+  display: block;
+}
+
+.reminder-item small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.reminder-note {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+}
+
+/* Dodanie do ekranu telefonu (CZĘŚĆ 20) */
+.install-btn {
+  position: relative;
+  color: var(--primary);
+}
+
+.install-steps {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.install-steps li + li {
+  margin-top: 6px;
+}
+
+.install-note {
+  margin: 14px 0 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

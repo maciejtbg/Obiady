@@ -141,6 +141,8 @@ function detectBrowser($ua) {
 }
 
 function detectOS($ua) {
+    if (preg_match('/iPhone|iPad|iPod/i', $ua)) return 'iOS';
+    if (preg_match('/Android/i', $ua)) return 'Android';
     if (preg_match('/Windows NT 10/i', $ua)) return 'Windows 10/11';
     if (preg_match('/Windows/i', $ua)) return 'Windows';
     if (preg_match('/Mac OS X/i', $ua)) return 'macOS';
