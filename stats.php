@@ -4,11 +4,16 @@
 
 require_once 'db_config.php';
 
-// Prosta autentykacja (zmień hasło!)
-$password = '5Kilos'; // ZMIEŃ TO!
-$entered = $_POST['password'] ?? $_GET['password'] ?? '';
+// Hasło jest w stats_config.php, którego nie ma w repozytorium (wzór:
+// stats_config.example.php). Tylko z formularza (POST): hasło w adresie strony
+// zostawałoby w historii przeglądarki i w logach serwera.
+$stats_password = '';
+if (file_exists(__DIR__ . '/stats_config.php')) {
+    require __DIR__ . '/stats_config.php';
+}
+$entered = isset($_POST['password']) ? (string)$_POST['password'] : '';
 
-if ($entered !== $password) {
+if ($stats_password === '' || !hash_equals((string)$stats_password, $entered)) {
     ?>
     <!DOCTYPE html>
     <html>
