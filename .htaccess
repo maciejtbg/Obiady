@@ -1,0 +1,14 @@
+# Pamięć podręczna przeglądarek. Hosting domyślnie każe trzymać wszystkie pliki
+# 30 dni, więc po aktualizacji rodzice widzieliby starą stronę. Strona (HTML)
+# jest sprawdzana przy każdym wejściu (ETag, zwykle odpowiedź 304 bez treści);
+# skrypt i style mają w index.html wersję ?v= (tools/asset_versions.py), więc
+# mogą zostać w pamięci długo.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "\.html?$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
