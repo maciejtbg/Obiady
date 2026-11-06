@@ -204,9 +204,19 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
           <span class="step-badge">1</span>
           <div>
             <h2 class="panel-title">Wczytaj jadłospis</h2>
-            <p class="panel-sub">Word, PDF albo zdjęcie jadłospisu na dany miesiąc</p>
+            <p class="panel-sub">Wybierz z listy albo wgraj plik: Word, PDF lub zdjęcie</p>
           </div>
         </header>
+
+        <!-- Jadłospisy wczytane już przez innych rodziców (wspólne dla wszystkich, z bazy):
+             wystarczy kliknąć, bez wgrywania pliku i bez zużywania limitów usług -->
+        <div id="historySection" class="history d-none">
+          <h3 class="history-title"><svg class="icon"><use href="#i-clock"/></svg>Jadłospisy wczytane przez rodziców</h3>
+          <p class="history-hint">Kliknij, żeby otworzyć menu bez wgrywania pliku. Twoje zaznaczenia zapamiętuje to urządzenie.</p>
+          <div id="historyList" class="history-list"></div>
+          <button class="expand-btn d-none" id="expandHistoryBtn">Pokaż starsze jadłospisy</button>
+          <p class="upload-divider"><span>albo wgraj nowy plik</span></p>
+        </div>
 
         <label class="dropzone" id="dropzone" for="fileInput">
           <span class="dropzone-icon"><svg class="icon"><use href="#i-upload"/></svg></span>
@@ -229,12 +239,6 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
 
         <textarea id="convertedText" class="form-control my-3 d-none" rows="6"
           placeholder="Tutaj pojawi się przekonwertowany tekst"></textarea>
-
-        <div id="historySection" class="history d-none">
-          <h3 class="history-title"><svg class="icon"><use href="#i-clock"/></svg>Ostatnio wczytane</h3>
-          <div id="historyList" class="history-list"></div>
-          <button class="expand-btn d-none" id="expandHistoryBtn">Pokaż więcej...</button>
-        </div>
 
         <div id="parseWarnings" class="parse-warnings d-none" role="status"></div>
         <div id="debugBox" class="alert alert-info d-none mt-3"></div>
@@ -387,7 +391,7 @@ if (sessionStorage.getItem(KLUCZ_SESJI) !== 'true') {
         <section class="panel tips">
           <h2 class="panel-title">Jak to działa?</h2>
           <ol class="tips-list">
-            <li>Wybierz plik z jadłospisem (Word, PDF albo zdjęcie). Dni i dania wczytają się same.</li>
+            <li>Otwórz jadłospis wczytany już przez innego rodzica albo wgraj plik (Word, PDF, zdjęcie). Dni i dania wczytają się same.</li>
             <li>Odznacz dania, których dziecko nie będzie jeść. Koszt policzy się automatycznie.</li>
             <li>Wygeneruj deklarację i wyślij ją e-mailem albo zapisz jako PDF.</li>
           </ol>

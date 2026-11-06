@@ -701,19 +701,22 @@ body.dark-theme .icon-moon {
 }
 
 .history {
-  margin-top: 22px;
+  margin-bottom: 4px;
 }
 
 .history-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 10px;
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.history-hint {
+  margin: 0 0 12px;
   color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.88rem;
 }
 
 .history-list {
@@ -725,12 +728,40 @@ body.dark-theme .icon-moon {
 }
 
 .history-item {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
+}
+
+/* Najnowszy jadłospis wyróżniony: zwykle to ten, o który chodzi */
+.history-item.is-latest {
+  border: 1.5px solid var(--primary);
+  background: var(--primary-soft);
+}
+
+.history-item-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.history-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .history-item:hover {
@@ -739,13 +770,14 @@ body.dark-theme .icon-moon {
 }
 
 .history-item strong {
-  display: block;
-  font-weight: 650;
+  font-size: 1.02rem;
+  font-weight: 750;
   overflow-wrap: anywhere;
 }
 
 .history-item small {
   display: block;
+  overflow-wrap: anywhere;
   margin-top: 2px;
   color: var(--muted);
   font-size: 0.8rem;
@@ -759,6 +791,25 @@ body.dark-theme .icon-moon {
   font-size: 0.9rem;
   font-weight: 650;
   cursor: pointer;
+}
+
+/* "albo wgraj nowy plik" między listą jadłospisów a polem wyboru pliku */
+.upload-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 14px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.upload-divider::before,
+.upload-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 /* ============================================

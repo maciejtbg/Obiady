@@ -354,16 +354,35 @@ function loadMoreHistory() {
         renderHistory();
       } else {
         alert('❌ Błąd ładowania historii: ' + (data.error || 'Nieznany błąd'));
-        expandHistoryBtn.textContent = 'Pokaż więcej...';
+        expandHistoryBtn.textContent = 'Pokaż starsze jadłospisy';
         expandHistoryBtn.disabled = false;
       }
     })
     .catch(error => {
       console.error('Błąd ładowania historii:', error);
       alert('❌ Nie udało się załadować historii');
-      expandHistoryBtn.textContent = 'Pokaż więcej...';
+      expandHistoryBtn.textContent = 'Pokaż starsze jadłospisy';
       expandHistoryBtn.disabled = false;
     });
+}
+
+// Nazwa miesiąca jadłospisu z historii: z wyniku parsera (Month, Year), a dla
+// starszych wpisów z nazwy pliku ("MENU_KATOLIK_Grudzień_2025.doc", "MENU_03.2026.doc")
+const HISTORY_MONTH_STEMS = ['stycz', 'lut', 'mar', 'kwie', 'maj', 'czerw', 'lip', 'sierp', 'wrze', 'pazdz', 'listop', 'grud'];
+
+function historyMenuLabel(item) {
+  try {
+    const parsed = JSON.parse(item.converted_text);
+    if (parsed && parsed.Month && parsed.Year) return `${DECLARATION_MONTHS[parsed.Month]} ${parsed.Year}`;
+  } catch (e) {}
+  const name = String(item.filename).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
+  const year = (name.match(/20\d\d/) || [''])[0];
+  let month = HISTORY_MONTH_STEMS.findIndex(stem => name.includes(stem)) + 1;
+  if (!month) {
+    const numeric = name.match(/(?:^|[^\d])(0?[1-9]|1[0-2])[._-]20\d\d/);
+    if (numeric) month = Number(numeric[1]);
+  }
+  return month ? `${DECLARATION_MONTHS[month]} ${year}`.trim() : null;
 }
 
 function renderHistory() {
@@ -373,35 +392,28 @@ function renderHistory() {
   }
 
   historySection.classList.remove('d-none');
-  
-  historyList.innerHTML = historyData.map(item => {
-    let preview = '';
-    try {
-      const parsed = JSON.parse(item.converted_text);
-      if (parsed.TextResult) {
-        const firstLine = parsed.TextResult.split('\n')[0];
-        preview = firstLine.length > 30 ? firstLine.substring(0, 30) + '...' : firstLine;
-      }
-    } catch (e) {
-      preview = 'Menu';
-    }
-    
+
+  historyList.innerHTML = historyData.map((item, index) => {
+    const label = historyMenuLabel(item);
+    const filename = escapeHtml(item.filename);
     return `
-      <div class="history-item" onclick="loadFromHistory(${item.id})">
-        <strong>${item.filename}</strong>
-        <small>${item.upload_date}</small>
-        ${preview ? `<small style="color: #999; font-style: italic;">${preview}</small>` : ''}
-      </div>
+      <button type="button" class="history-item${index === 0 ? ' is-latest' : ''}" onclick="loadFromHistory(${Number(item.id)})">
+        <span class="history-item-main">
+          <strong>${label ? escapeHtml(label) : filename}</strong>
+          ${index === 0 ? '<span class="history-badge">Najnowszy</span>' : ''}
+        </span>
+        <small>${label ? filename + ' · ' : ''}wczytany ${escapeHtml(item.upload_date)}</small>
+      </button>
     `;
   }).join('');
 
   if (!allHistoryLoaded && historyData.length === 1) {
     expandHistoryBtn.classList.remove('d-none');
-    expandHistoryBtn.textContent = 'Pokaż więcej...';
+    expandHistoryBtn.textContent = 'Pokaż starsze jadłospisy';
     expandHistoryBtn.disabled = false;
   } else if (allHistoryLoaded && historyData.length > 1) {
     expandHistoryBtn.classList.remove('d-none');
-    expandHistoryBtn.textContent = 'Pokaż mniej...';
+    expandHistoryBtn.textContent = 'Pokaż tylko najnowszy';
     expandHistoryBtn.disabled = false;
   } else {
     expandHistoryBtn.classList.add('d-none');
@@ -429,6 +441,8 @@ window.loadFromHistory = function(id) {
     
     convertedTextarea.value = textData;
     parseMenu(textData);
+    // Na telefonie tabela jest niżej: przewijamy do niej od razu
+    document.querySelector('.area-menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 };
 
