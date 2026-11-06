@@ -32,7 +32,7 @@ Narzędzie webowe do wczytywania jadłospisu szkolnej stołówki (Word, PDF albo
 - Moje deklaracje: każdy zdeklarowany miesiąc zapisuje się tylko w przeglądarce (localStorage, nic nie trafia na serwer), z wybranymi obiadami, kwotą do zapłaty, terminem wpłaty, historią wysyłek (e-mail, PDF, kopiowanie) i podglądem wysłanej deklaracji; miesiąc można ponownie otworzyć w tabeli i oznaczyć jako zapłacony
 - Kopia danych z przeglądarki do pliku JSON (zaznaczenia, dane dziecka, Moje deklaracje, lista „nie je”) i wczytanie jej na innym urządzeniu; wczytanie tylko dopisuje brakujące dane
 - Przypomnienia w kalendarzu o terminach z deklaracji (wpłata do 10. dnia miesiąca, deklaracja na kolejny miesiąc do końca miesiąca): link do Kalendarza Google albo plik .ics z `calendar.php` (iPhone, Outlook)
-- Strona jak aplikacja na telefonie: `manifest.webmanifest`, ikony w `icons/` i `sw.js` (ostatnio wczytana wersja działa też bez internetu)
+- Strona jak aplikacja na telefonie: `manifest.php` i ikony w `icons/`. Bez trybu offline: ochrona hostingu przed botami blokuje zapytania z service workera (`sw.js` tylko wyrejestrowuje dawną wersję)
 - Błędy strony z przeglądarek rodziców zapisują się w tabeli `js_errors` (`log_error.php`, bez danych osobowych) i są widoczne w statystykach
 - Kalendarz na lodówkę (TXT, DOCX, PDF): cały miesiąc z informacją, w które dni jest zamówiona zupa i/lub drugie danie, z nazwami dań albo bez
 - Tryb ciemny/jasny, statystyki odwiedzin

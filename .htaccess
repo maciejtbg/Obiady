@@ -11,11 +11,8 @@
   <FilesMatch "\.html?$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
-  # Aplikacja na telefonie (sw.js i manifest) też musi widzieć zmiany od razu
-  <FilesMatch "^(sw\.js|manifest\.webmanifest)$">
+  # sw.js tylko wyrejestrowuje dawny tryb bez internetu; przeglądarka ma go widzieć od razu
+  <FilesMatch "^sw\.js$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
-</IfModule>
-<IfModule mod_mime.c>
-  AddType application/manifest+json .webmanifest
 </IfModule>

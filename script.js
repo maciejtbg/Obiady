@@ -5230,10 +5230,11 @@ function initReminders() {
 // ============================================
 // CZĘŚĆ 20: STRONA JAK APLIKACJA NA TELEFONIE
 // ============================================
-// manifest.webmanifest i ikony pozwalają dodać stronę do ekranu telefonu, a sw.js
-// pokazuje ostatnio wczytaną wersję także bez internetu. Na iPhonie aplikacja
-// z ekranu początkowego ma osobną pamięć, więc przy pierwszym uruchomieniu bez
-// danych proponujemy wczytanie kopii zapisanej w Safari.
+// manifest.php i ikony pozwalają dodać stronę do ekranu telefonu. Trybu bez
+// internetu (service worker) nie ma: ochrona hostingu przed botami odsyłała jego
+// zapytaniom stronę ze sprawdzaniem przeglądarki zamiast danych. Na iPhonie
+// aplikacja z ekranu początkowego ma osobną pamięć, więc przy pierwszym
+// uruchomieniu bez danych proponujemy wczytanie kopii zapisanej w Safari.
 
 const APP_FIRST_RUN_KEY = 'obiady_app_first_run_done';
 let installPromptEvent = null;
@@ -5303,10 +5304,12 @@ function offerBackupInNewApp() {
 }
 
 function initInstallApp() {
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(error => {
-      console.warn('Tryb bez internetu niedostępny:', error);
-    });
+  // Service worker z 06.11.2026 (tryb bez internetu) psuł zapytania na tym hostingu:
+  // wyrejestrowujemy go u tych, którzy zdążyli go dostać
+  if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      registrations.forEach(registration => registration.unregister());
+    }).catch(() => {});
   }
   // Dane w przeglądarce mają nie znikać przy porządkach w pamięci telefonu
   if (navigator.storage && navigator.storage.persist && isStandaloneApp()) {
