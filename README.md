@@ -42,6 +42,10 @@ PHP (ZipArchive, DOMDocument, cURL, MySQLi), Bootstrap, vanilla JS.
 - Klucz OCR.space (skany i zdjęcia, darmowy, rejestracja e-mailem na ocr.space/ocrapi): ustaw `OCR_SPACE_API_KEY` albo skopiuj `ocr_config.example.php` do `ocr_config.php`.
 - Klucz AI do opisów dań (darmowy, konto na console.groq.com, API Keys): ustaw `GROQ_API_KEY` albo skopiuj `ai_config.example.php` do `ai_config.php`. Tabele `dish_descriptions` i `dish_ai_usage` tworzą się same przy pierwszym użyciu.
 
+## Wdrożenie
+
+- Przed wysłaniem plików na serwer uruchom `python tools/asset_versions.py`: dopisuje do `styles.css` i `script.js` w `index.html` wersję liczoną z treści, żeby przeglądarki rodziców nie używały starych kopii z pamięci podręcznej.
+
 ## Testy parsera
 
 - `php tests/dish_descriptions_test.php` sprawdza opisy dań bez sieci i bazy (nazwy z gramaturami, odpowiedzi AI, hasła z Wikipedii).
