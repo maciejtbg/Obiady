@@ -6,6 +6,14 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json; charset=utf-8');
 
+// Strony sprzed 06.11.2026 zostały w przeglądarkach nawet na 30 dni (tak ustawiał
+// hosting) i ich skrypt pyta o historię bez parametru v; aktualny skrypt dodaje v.
+// Starej stronie każemy wyczyścić pamięć podręczną, więc przy następnym wejściu
+// przeglądarka pobierze aktualną wersję. Ciasteczek i danych rodzica to nie rusza.
+if (!isset($_GET['v'])) {
+    header('Clear-Site-Data: "cache"');
+}
+
 if (!file_exists('db_config.php')) {
     echo json_encode([
         'success' => false,

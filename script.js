@@ -3,6 +3,25 @@
 // Bez zbędnych modali, prostsza nawigacja
 // ============================================
 
+// Strona sprzed 06.11.2026 bywa jeszcze w pamięci przeglądarek (hosting kazał ją
+// trzymać 30 dni) i ładuje ten skrypt bez numeru wersji (?v=). Wtedy prosimy serwer
+// o wyczyszczenie pamięci podręcznej (get_history.php bez v, patrz Clear-Site-Data)
+// i raz przeładowujemy stronę, żeby przeglądarka pobrała aktualny index.html.
+(function reloadOutdatedPage() {
+  const src = document.currentScript ? document.currentScript.src : '';
+  if (!src || /[?&]v=/.test(src)) return;
+  try {
+    if (sessionStorage.getItem('obiady_reloaded_for_update')) return;
+    sessionStorage.setItem('obiady_reloaded_for_update', '1');
+  } catch (e) {
+    return;
+  }
+  fetch('get_history.php?limit=1', { cache: 'no-store' }).catch(() => {}).finally(() => location.reload());
+})();
+
+// Aktualna strona pyta o historię z parametrem v, stara bez niego (get_history.php)
+const HISTORY_API_VERSION = 2;
+
 // ============================================
 // CZĘŚĆ 1: ZMIENNE GLOBALNE I ELEMENTY DOM
 // ============================================
@@ -309,7 +328,7 @@ let allHistoryLoaded = false;
 let autoOpenPending = true; // przy wejściu na stronę otwieramy najnowszy jadłospis z listy
 
 function loadHistory() {
-  fetch('get_history.php?limit=1')
+  fetch(`get_history.php?limit=1&v=${HISTORY_API_VERSION}`)
     .then(response => {
       if (!response.ok) {
         throw new Error('HTTP ' + response.status);
@@ -344,7 +363,7 @@ function loadMoreHistory() {
   expandHistoryBtn.disabled = true;
   expandHistoryBtn.textContent = 'Ładowanie...';
   
-  fetch('get_history.php?limit=20')
+  fetch(`get_history.php?limit=20&v=${HISTORY_API_VERSION}`)
     .then(response => {
       if (!response.ok) {
         throw new Error('HTTP ' + response.status);
@@ -467,7 +486,7 @@ async function findHistoryItem(id) {
   let item = historyData.find(h => h.id === id);
   if (item) return item;
   try {
-    const data = await (await fetch('get_history.php?limit=50')).json();
+    const data = await (await fetch(`get_history.php?limit=50&v=${HISTORY_API_VERSION}`)).json();
     item = (data.history || []).find(h => h.id === id);
   } catch (error) {
     console.warn('Lista jadłospisów niedostępna:', error);
